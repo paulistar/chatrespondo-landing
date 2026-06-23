@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="800" viewBox="0 0 1280 800">
+  <rect width="1280" height="800" fill="#0a0a0a"/>
+  <text x="48" y="56" fill="#fafafa" font-family="system-ui" font-size="22" font-weight="600">Métricas</text>
+  <rect x="48" y="100" width="280" height="120" rx="12" fill="#171717"/>
+  <text x="72" y="140" fill="#a3a3a3" font-family="system-ui" font-size="12">Conversas hoje</text>
+  <text x="72" y="180" fill="#fafafa" font-family="system-ui" font-size="32" font-weight="700">847</text>
+  <rect x="360" y="100" width="280" height="120" rx="12" fill="#171717"/>
+  <text x="384" y="140" fill="#a3a3a3" font-family="system-ui" font-size="12">Tempo médio resposta</text>
+  <text x="384" y="180" fill="#fafafa" font-family="system-ui" font-size="32" font-weight="700">4m 12s</text>
+  <rect x="672" y="100" width="280" height="120" rx="12" fill="#171717"/>
+  <text x="696" y="140" fill="#a3a3a3" font-family="system-ui" font-size="12">Resolução IA</text>
+  <text x="696" y="180" fill="#22c55e" font-family="system-ui" font-size="32" font-weight="700">78%</text>
+  <rect x="48" y="260" width="1184" height="320" rx="12" fill="#171717"/>
+  <polyline points="80,520 200,480 320,500 440,420 560,440 680,380 800,400 920,320 1040,340 1160,280" fill="none" stroke="#3b82f6" stroke-width="3"/>
+</svg>

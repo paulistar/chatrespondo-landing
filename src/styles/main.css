@@ -1,0 +1,66 @@
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-bg: #0d0d0d;
+  --color-bg-elevated: #171717;
+  --color-bg-muted: #262626;
+  --color-text: #fafafa;
+  --color-text-muted: #a3a3a3;
+  --color-accent: #3b82f6;
+  --color-accent-hover: #2563eb;
+  --color-success: #22c55e;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  body {
+    @apply bg-bg font-sans text-[var(--color-text)] antialiased;
+  }
+
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-accent;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex cursor-pointer items-center justify-center rounded-xl bg-accent px-6 py-3 text-sm font-semibold text-white transition-colors duration-200 hover:bg-accent-hover;
+  }
+
+  .btn-secondary {
+    @apply inline-flex cursor-pointer items-center justify-center rounded-xl border border-muted bg-transparent px-6 py-3 text-sm font-semibold text-[var(--color-text)] transition-colors duration-200 hover:border-accent hover:text-accent;
+  }
+
+  .section-label {
+    @apply text-xs font-semibold uppercase tracking-widest text-accent;
+  }
+
+  .card {
+    @apply rounded-2xl border border-muted bg-elevated p-6 transition-colors duration-200;
+  }
+
+  .feature-shot {
+    @apply overflow-hidden rounded-2xl border border-muted bg-elevated shadow-2xl;
+  }
+}

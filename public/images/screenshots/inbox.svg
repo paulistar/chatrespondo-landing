@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="800" viewBox="0 0 1280 800">
+  <rect width="1280" height="800" fill="#0a0a0a"/>
+  <rect x="0" y="0" width="220" height="800" fill="#111"/>
+  <rect x="220" y="0" width="360" height="800" fill="#141414"/>
+  <rect x="580" y="0" width="700" height="800" fill="#0d0d0d"/>
+  <text x="24" y="40" fill="#fafafa" font-family="system-ui" font-size="18" font-weight="600">ChatRespondo</text>
+  <text x="24" y="90" fill="#3b82f6" font-family="system-ui" font-size="13">Inbox</text>
+  <text x="24" y="120" fill="#737373" font-family="system-ui" font-size="13">Kanban</text>
+  <text x="240" y="36" fill="#fafafa" font-family="system-ui" font-size="14" font-weight="600">Conversas</text>
+  <rect x="232" y="56" width="336" height="56" rx="8" fill="#1a1a1a"/>
+  <rect x="232" y="124" width="336" height="72" rx="8" fill="#1f2937" stroke="#3b82f6" stroke-width="1"/>
+  <circle cx="256" cy="160" r="16" fill="#22c55e"/>
+  <text x="280" y="156" fill="#fafafa" font-family="system-ui" font-size="13" font-weight="500">Maria Silva</text>
+  <text x="280" y="176" fill="#a3a3a3" font-family="system-ui" font-size="11">Quanto custa o plano Pro?</text>
+  <rect x="232" y="204" width="336" height="72" rx="8" fill="#171717"/>
+  <circle cx="256" cy="240" r="16" fill="#e11d48"/>
+  <text x="280" y="236" fill="#fafafa" font-family="system-ui" font-size="13">João  Instagram</text>
+  <text x="280" y="256" fill="#a3a3a3" font-family="system-ui" font-size="11">Vocês atendem sábado?</text>
+  <rect x="600" y="24" width="660" height="48" rx="8" fill="#171717"/>
+  <text x="620" y="54" fill="#fafafa" font-family="system-ui" font-size="14" font-weight="600">Maria Silva · WhatsApp</text>
+  <rect x="600" y="100" width="280" height="48" rx="12" fill="#262626"/>
+  <text x="620" y="130" fill="#d4d4d4" font-family="system-ui" font-size="13">Oi! Quanto custa o plano Pro?</text>
+  <rect x="880" y="168" width="320" height="56" rx="12" fill="#1e3a5f"/>
+  <text x="900" y="192" fill="#93c5fd" font-family="system-ui" font-size="12">Agente Vendas</text>
+  <text x="900" y="210" fill="#e5e5e5" font-family="system-ui" font-size="13">O Pro sai R$197/mês com IA ilimitada...</text>
+</svg>

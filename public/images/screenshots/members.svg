@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="800" viewBox="0 0 1280 800">
+  <rect width="1280" height="800" fill="#0a0a0a"/>
+  <text x="48" y="56" fill="#fafafa" font-family="system-ui" font-size="22" font-weight="600">Membros do time</text>
+  <rect x="48" y="100" width="1184" height="48" rx="8" fill="#3b82f6"/>
+  <text x="72" y="130" fill="#fff" font-family="system-ui" font-size="13" font-weight="600">+ Convidar membro</text>
+  <rect x="48" y="180" width="1184" height="64" rx="8" fill="#171717"/>
+  <circle cx="80" cy="212" r="20" fill="#3b82f6"/>
+  <text x="112" y="208" fill="#fafafa" font-family="system-ui" font-size="14" font-weight="500">Ana Costa</text>
+  <text x="112" y="226" fill="#a3a3a3" font-family="system-ui" font-size="12">ana@empresa.com · Admin</text>
+  <text x="1100" y="218" fill="#22c55e" font-family="system-ui" font-size="12">Online</text>
+  <rect x="48" y="260" width="1184" height="64" rx="8" fill="#171717"/>
+  <circle cx="80" cy="292" r="20" fill="#737373"/>
+  <text x="112" y="288" fill="#fafafa" font-family="system-ui" font-size="14">Pedro Lima · Agente</text>
+  <text x="1100" y="298" fill="#737373" font-family="system-ui" font-size="12">Offline</text>
+</svg>

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="800" viewBox="0 0 1280 800">
+  <rect width="1280" height="800" fill="#0a0a0a"/>
+  <text x="48" y="56" fill="#fafafa" font-family="system-ui" font-size="22" font-weight="600">Pipeline · Vendas</text>
+  <text x="200" y="120" fill="#737373" font-family="system-ui" font-size="13" font-weight="600">NOVO</text>
+  <text x="440" y="120" fill="#737373" font-family="system-ui" font-size="13" font-weight="600">EM ATENDIMENTO</text>
+  <text x="720" y="120" fill="#737373" font-family="system-ui" font-size="13" font-weight="600">PROPOSTA</text>
+  <text x="1000" y="120" fill="#737373" font-family="system-ui" font-size="13" font-weight="600">FECHADO</text>
+  <rect x="48" y="140" width="260" height="120" rx="12" fill="#171717"/>
+  <text x="64" y="172" fill="#fafafa" font-family="system-ui" font-size="13">Lead  Clínica</text>
+  <rect x="48" y="280" width="260" height="120" rx="12" fill="#171717"/>
+  <text x="64" y="312" fill="#fafafa" font-family="system-ui" font-size="13">Orçamento implante</text>
+  <rect x="360" y="140" width="260" height="120" rx="12" fill="#1f2937" stroke="#3b82f6"/>
+  <text x="376" y="172" fill="#fafafa" font-family="system-ui" font-size="13">Maria  WhatsApp</text>
+  <rect x="680" y="140" width="260" height="120" rx="12" fill="#171717"/>
+  <text x="696" y="172" fill="#fafafa" font-family="system-ui" font-size="13">Proposta enviada</text>
+  <rect x="960" y="140" width="260" height="120" rx="12" fill="#14532d"/>
+  <text x="976" y="172" fill="#86efac" font-family="system-ui" font-size="13">Fechado </text>
+</svg>
