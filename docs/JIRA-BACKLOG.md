@@ -13,7 +13,7 @@
 | LP-07 | ICP → Pricing → FAQ | Done |
 | LP-08 | Páginas legais | Done — `privacidade.html`, `termos.html` |
 | LP-09 | Deploy EasyPanel | Done — serviço `landing` @ chatrespondo.com |
-| LP-10 | QA + Lighthouse | Ver checklist abaixo |
-| LP-11 | Analytics + UTMs | GTM placeholder `data-gtm` + UTMs em `src/main.js` |
+| LP-10 | QA + Lighthouse | Done — `docs/QA-CHECKLIST.md` |
+| LP-11 | Analytics + UTMs | Done — UTMs + `dataLayer` CTA clicks + GTM via `data-gtm` |
 
 Importar este epic no Jira quando Atlassian MCP estiver conectado.
