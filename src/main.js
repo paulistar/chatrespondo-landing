@@ -18,13 +18,30 @@ export function buildLoginUrl() {
   return `${LOGIN_BASE}?${params.toString()}`;
 }
 
+function pushDataLayer(event, payload = {}) {
+  window.dataLayer = window.dataLayer || [];
+  window.dataLayer.push({ event, ...payload });
+}
+
 function wireCtas() {
   document.querySelectorAll('[data-register]').forEach((el) => {
     const medium = el.getAttribute('data-register') || 'cta';
-    el.setAttribute('href', buildRegisterUrl(medium));
+    const url = buildRegisterUrl(medium);
+    el.setAttribute('href', url);
+    el.addEventListener('click', () => {
+      pushDataLayer('cta_click', {
+        cta_type: 'register',
+        cta_medium: medium,
+        cta_url: url,
+      });
+    });
   });
   document.querySelectorAll('[data-login]').forEach((el) => {
-    el.setAttribute('href', buildLoginUrl());
+    const url = buildLoginUrl();
+    el.setAttribute('href', url);
+    el.addEventListener('click', () => {
+      pushDataLayer('cta_click', { cta_type: 'login', cta_url: url });
+    });
   });
 }
 
