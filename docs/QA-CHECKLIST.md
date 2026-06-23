@@ -12,7 +12,7 @@ Data: 2026-06-23
 | `https://chatrespondo.com/sitemap.xml` → 200 | ✅ | |
 | `https://chatrespondo.com/robots.txt` → 200 | ✅ | |
 | SSL via Cloudflare + Let's Encrypt | ✅ | HTTP/2 |
-| `www` → 301 para apex | ⚠️ | Adicionar CNAME `www` → tunnel + redirect rule no Cloudflare (token write indisponível via MCP) |
+| `www` → 301 para apex | ✅ | DNS CNAME + tunnel ingress + redirect nginx |
 
 ## Conversão e tracking (LP-11)
 
