@@ -122,6 +122,34 @@ ChatRespondo é um SaaS self-serve (não white-label) para atendimento omnichann
 
 **Gate de saída:** Auditoria LGPD básica passa; RPO/RTO documentados.
 
+#### Progresso jun/2026
+
+| Issue | Status |
+|-------|--------|
+| SCRUM-74 LGPD export/delete | ✅ API + UI perfil |
+| SCRUM-75 Cookie consent | ✅ Landing + painel |
+| SCRUM-77 Backup Postgres | ✅ Script + runbook |
+| SCRUM-78 CI/CD smoke | ✅ Workflow pós-CI (api) + CI web |
+| SCRUM-76 Stripe Tax | ⏸ Requer Stripe Dashboard live |
+| SCRUM-79 Alertas | ⏸ Requer canal Slack/Sentry rules |
+| SCRUM-80 Analytics | ⏸ Requer conta PostHog/Plausible |
+
+---
+
+## Google Tag Manager (SCRUM-73)
+
+A landing já expõe `dataLayer` (`cta_click`) e carrega GTM via `data-gtm` / `VITE_GTM_ID`.
+
+### Ativar em produção
+
+1. Criar container em [tagmanager.google.com](https://tagmanager.google.com) (conta Mart Studios).
+2. Configurar tag **GA4 Configuration** + trigger em evento custom `cta_click`.
+3. Habilitar **Consent Mode v2** no container (default denied; atualizado pelo banner).
+4. No EasyPanel → serviço `landing` → **Build args**: `VITE_GTM_ID=GTM-XXXXXXX`
+5. Redeploy landing e validar com [Tag Assistant](https://tagassistant.google.com).
+
+**Bloqueio atual:** nenhum `GTM-*` real encontrado no workspace nem no env EasyPanel — aguardando ID do usuário.
+
 ---
 
 ### Fase 4 — Polish para pagantes (P2)

@@ -1,4 +1,5 @@
 import './styles/main.css';
+import { initCookieConsent } from './cookie-consent';
 
 const REGISTER_BASE = 'https://panel.chatrespondo.com/register';
 const LOGIN_BASE = 'https://panel.chatrespondo.com/login';
@@ -105,4 +106,4 @@ wireCtas();
 wireFaq();
 wireMobileNav();
 wireHeader();
-initAnalytics();
+initCookieConsent(initAnalytics);
