@@ -130,9 +130,9 @@ ChatRespondo é um SaaS self-serve (não white-label) para atendimento omnichann
 | SCRUM-75 Cookie consent | ✅ Landing + painel |
 | SCRUM-77 Backup Postgres | ✅ Script + runbook |
 | SCRUM-78 CI/CD smoke | ✅ Workflow pós-CI (api) + CI web |
-| SCRUM-76 Stripe Tax | ⏸ Requer Stripe Dashboard live |
-| SCRUM-79 Alertas | ⏸ Requer canal Slack/Sentry rules |
-| SCRUM-80 Analytics | ⏸ Requer conta PostHog/Plausible |
+| SCRUM-76 Stripe Tax | ✅ Código + flag `STRIPE_TAX_ENABLED` (Dashboard pendente) |
+| SCRUM-79 Alertas | ✅ Sentry + Slack webhook (env em produção) |
+| SCRUM-80 Analytics | ✅ PostHog + GA4 via GTM (`docs/GTM-GA4-SETUP.md`) |
 
 ---
 

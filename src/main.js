@@ -1,5 +1,6 @@
 import './styles/main.css';
 import { initCookieConsent } from './cookie-consent';
+import { initAnalytics, trackCtaClick } from './analytics';
 
 const REGISTER_BASE = 'https://panel.chatrespondo.com/register';
 const LOGIN_BASE = 'https://panel.chatrespondo.com/login';
@@ -20,6 +21,10 @@ export function buildLoginUrl() {
 }
 
 function pushDataLayer(event, payload = {}) {
+  if (event === 'cta_click') {
+    trackCtaClick(payload);
+    return;
+  }
   window.dataLayer = window.dataLayer || [];
   window.dataLayer.push({ event, ...payload });
 }
@@ -95,3 +100,4 @@ wireFaq();
 wireMobileNav();
 wireHeader();
 initCookieConsent();
+initAnalytics();
