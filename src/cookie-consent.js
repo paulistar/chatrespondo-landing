@@ -63,11 +63,10 @@ function renderBanner(onAccept, onReject) {
   document.body.appendChild(banner);
 }
 
-export function initCookieConsent(onAnalyticsAllowed) {
+export function initCookieConsent() {
   const existing = getCookieConsent();
   if (existing === 'accepted') {
     pushConsentMode(true);
-    onAnalyticsAllowed();
     return;
   }
   if (existing === 'rejected') {
@@ -82,7 +81,6 @@ export function initCookieConsent(onAnalyticsAllowed) {
       setCookieConsent('accepted');
       pushConsentMode(true);
       document.querySelector('[data-cookie-consent]')?.remove();
-      onAnalyticsAllowed();
     },
     () => {
       setCookieConsent('rejected');

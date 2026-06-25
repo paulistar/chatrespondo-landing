@@ -2,7 +2,7 @@
 
 FROM node:20-alpine AS builder
 WORKDIR /app
-ARG VITE_GTM_ID=
+ARG VITE_GTM_ID=GTM-NXB98NQK
 ENV VITE_GTM_ID=$VITE_GTM_ID
 COPY package.json package-lock.json* ./
 RUN npm install

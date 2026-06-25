@@ -90,20 +90,8 @@ function wireHeader() {
   window.addEventListener('scroll', onScroll, { passive: true });
 }
 
-function initAnalytics() {
-  const gtmId = document.body.dataset.gtm;
-  if (!gtmId || gtmId === 'GTM-XXXX') return;
-
-  window.dataLayer = window.dataLayer || [];
-  window.dataLayer.push({ 'gtm.start': new Date().getTime(), event: 'gtm.js' });
-  const script = document.createElement('script');
-  script.async = true;
-  script.src = `https://www.googletagmanager.com/gtm.js?id=${gtmId}`;
-  document.head.appendChild(script);
-}
-
 wireCtas();
 wireFaq();
 wireMobileNav();
 wireHeader();
-initCookieConsent(initAnalytics);
+initCookieConsent();
