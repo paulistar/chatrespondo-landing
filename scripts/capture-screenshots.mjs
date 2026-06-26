@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUT_DIR = path.join(__dirname, '../public/images/screenshots');
 const BASE = 'https://panel.chatrespondo.com';
-const EMAIL = process.env.CAPTURE_EMAIL ?? 'admin@chatrespondo.com';
+const EMAIL = process.env.CAPTURE_EMAIL ?? 'contato@chatrespondo.com';
 const PASSWORD = process.env.CAPTURE_PASSWORD ?? 'Admin@123';
 
 const SHOTS = [
