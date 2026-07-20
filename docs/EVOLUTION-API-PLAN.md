@@ -2,13 +2,60 @@
 
 > **Para workers agênticos:** este é um **plano de implementação**, não código. A implementação deve seguir TDD (RED → GREEN → REFACTOR), commits frequentes e deploy incremental sem quebrar produção. Cada fase é entregável de forma independente. As tarefas usam checkbox (`- [ ]`) para tracking.
 
-**Objetivo:** Adicionar um novo canal WhatsApp baseado em **Evolution API** (gateway Baileys self-hosted) ao ChatRespondo, reaproveitando 100% da arquitetura hexagonal de `channel-hub` (ports/adapters), sem alterar o pipeline de mensagens existente.
+**Objetivo:** Adicionar um novo canal WhatsApp baseado em **Evolution API** (gateway Baileys self-hosted) ao ChatRespondo, reaproveitando 100% da arquitetura hexagonal de `channel-hub` (ports/adapters), sem alterar o pipeline de mensagens existente. **Canais existentes (Zappfy etc.) não são tocados** — Evolution é só mais uma opção no wizard.
 
-**Arquitetura:** Evolution API roda como serviço Docker próprio (EasyPanel/Contabo, atrás do Cloudflare). O ChatRespondo fala com ele via REST (criar instância, conectar QR, enviar) e recebe eventos via webhook (`messages.upsert`, `connection.update`, etc). Cada número WhatsApp = 1 *instance* Evolution = 1 `Channel` no ChatRespondo (isolamento por org via `organizationId`).
+**Arquitetura:** Evolution API (servidor) roda como serviço Docker próprio (EasyPanel/Contabo, atrás do Cloudflare). Opcionalmente Evolution Manager v2 (UI admin) ao lado. O ChatRespondo fala com a **API** via REST (criar instância, conectar QR, enviar) e recebe eventos via webhook (`messages.upsert`, `connection.update`, etc). Cada número WhatsApp = 1 *instance* Evolution = 1 `Channel` no ChatRespondo (isolamento por org via `organizationId`).
 
-**Tech Stack:** NestJS + BullMQ + Prisma/Postgres + Redis (API), Next.js (painel), Evolution API v2 (Docker), EasyPanel + Cloudflare Tunnel + Contabo VPS (infra).
+**Tech Stack:** NestJS + BullMQ + Prisma/Postgres + Redis (API), Next.js (painel), **Evolution API v2** (Docker) + **Evolution Manager v2** (UI ops, opcional), EasyPanel + Cloudflare Tunnel + Contabo VPS (infra).
 
 **Epic Jira:** pendente — MCP Atlassian retornou `403 The app is not installed on this instance` (cloud `a11c31be-…` / `martstudiosbr.atlassian.net`). Stories S0–S6 prontas na §10 para criação manual. Labels: `chatrespondo`, `evolution-api`.
+
+---
+
+## 0. Decisões travadas (2026-07-20)
+
+| # | Tema | Decisão |
+|---|------|---------|
+| 1 | Baileys vs Cloud API | **Evolution com motor Baileys** como canal **aditivo**. Não migrar nem alterar Zappfy/`WHATSAPP_OFFICIAL`. Cloud API oficial continua no canal já existente. |
+| 2 | 1 número = 1 instance | **Sim.** Cada `Channel` tipo `WHATSAPP_EVOLUTION` = 1 instance Evolution = 1 número. Org pode ter **N** canais (Zappfy + Evolution + …) até `maxChannels` do plano. Novo canal = novo número. |
+| 3 | Zappfy lado a lado | **Confirmado.** Evolution e Zappfy são canais independentes na mesma org. |
+| 4 | Grupos WhatsApp | Explicação na §15 (FAQ). **Default MVP:** só conversas **1:1** primeiro; suporte a grupos **adiado para S4+**. Confirmação do usuário ainda pendente após clarificação. |
+| 5 | Hosting | **Mesmo Contabo / EasyPanel** (serviço dedicado Evolution). |
+| 6 | Importar histórico ao conectar | **Sim** — Phase 3 / S5 (deixa de ser só “opcional”). |
+| 7 | Postgres/Redis da Evolution | **Dedicados** (não compartilhar com ChatRespondo). |
+
+**Stack a deployar (clarificação do repo linkado):**
+
+| Peça | O que é | Deploy? |
+|------|---------|---------|
+| **Evolution API** ([EvolutionAPI/evolution-api](https://github.com/EvolutionAPI/evolution-api)) | Servidor Node que conecta WhatsApp (Baileys), expõe REST + webhooks | **Sim — obrigatório** |
+| **Evolution Manager v2** ([evolution-foundation/evolution-manager-v2@3137df4](https://github.com/evolution-foundation/evolution-manager-v2/tree/3137df469504ce211c68e7b35f0706497ac1b95f)) | UI React/Vite/Tailwind para **administrar** a API (instâncias, chatbots, webhooks). **Não** substitui o painel ChatRespondo nem a API | **Opcional** — útil no spike (S0) e ops; restringir com basic auth / IP allowlist |
+
+> O Manager v2 **exige** uma Evolution API já rodando (`VITE_EVOLUTION_API_URL` + API key). ChatRespondo integra com a **API**, não com o Manager.
+
+### Modelo multi-número (confirmado)
+
+```mermaid
+flowchart TB
+  subgraph ORG["Org Acme (mesmo tenant)"]
+    Z["Channel Zappfy<br/>número A"]
+    E1["Channel Evolution #1<br/>número B"]
+    E2["Channel Evolution #2<br/>número C"]
+  end
+
+  subgraph EVO["Evolution API (1 container EasyPanel)"]
+    I1["Instance cr_org_ch1<br/>↔ número B"]
+    I2["Instance cr_org_ch2<br/>↔ número C"]
+  end
+
+  Z -.->|independente| ZAPPFY[Zappfy/Uazapi]
+  E1 --> I1
+  E2 --> I2
+  BILL["Billing: count Channel ≤ maxChannels"]
+  ORG --> BILL
+```
+
+**Resposta direta:** sim — ao adicionar um **novo** canal Evolution, a org ganha **outro** número (outra instance). Pode terminar com vários números no total (misturando Zappfy + Evolution), cada um com instance própria, limitado por `maxChannels`.
 
 ---
 
@@ -74,6 +121,19 @@ Fila `outbound-messages` → `registry.getOutbound(channel.type).sendMessage()` 
 
 ## 3. Arquitetura proposta
 
+### 3.0 Evolution API vs Manager v2 (pesquisa 2026-07-20)
+
+O link [evolution-manager-v2@3137df4](https://github.com/evolution-foundation/evolution-manager-v2/tree/3137df469504ce211c68e7b35f0706497ac1b95f) é a **UI de administração**, não o servidor WhatsApp:
+
+| | **Evolution API** | **Evolution Manager v2** |
+|--|-------------------|--------------------------|
+| Papel | Gateway WhatsApp (Baileys), REST, webhooks | Dashboard React para ops (instâncias, bots, métricas) |
+| Stack | Node (Docker oficial Evolution) | React 18 + TypeScript + Vite + Radix/Tailwind |
+| Quero no ChatRespondo? | **Sim — integração de produção** | **Opcional** — só para admin interno no EasyPanel |
+| Usuário final vê? | Não (backend) | Não — o painel do produto continua sendo o ChatRespondo Next.js |
+
+Deploy recomendado no Contabo/EasyPanel: **Evolution API + Postgres dedicado + Redis dedicado** (+ Manager v2 opcional atrás de auth).
+
 ### 3.1 Diagrama
 
 ```mermaid
@@ -86,8 +146,9 @@ flowchart LR
     direction TB
     EI1[Instance org_A_ch1]
     EI2[Instance org_B_ch7]
-    EDB[(Postgres Evolution)]
-    ERD[(Redis Evolution)]
+    EDB[(Postgres Evolution dedicado)]
+    ERD[(Redis Evolution dedicado)]
+    MGR[Manager v2 UI - ops opcional]
   end
 
   subgraph CR[ChatRespondo API - NestJS]
@@ -112,11 +173,12 @@ flowchart LR
   EVOHTTP -.->|create/connect/status/logout| EI1
   PANEL -->|REST create channel + get QR| CR
   CR -->|QR base64 / estado via WS| PANEL
+  MGR -.->|admin REST| EI1
   EI1 --- EDB
   EI1 --- ERD
 ```
 
-### 3.2 Isolamento multi-tenant (decisão-chave)
+### 3.2 Isolamento multi-tenant (decisão-chave — travada)
 
 **Modelo recomendado: Evolution compartilhada + 1 instance por Channel, namespaced por org.**
 
@@ -256,9 +318,10 @@ Operador/IA → pipeline outbound → `registry.getOutbound(WHATSAPP_EVOLUTION).
 
 > Cada fase é mergeável e deployável sem quebrar produção. Novo `ChannelType` é aditivo; enquanto o adapter não estiver registrado, criar canal Evolution simplesmente não é oferecido no painel (feature-gated).
 
-### Fase 0 — Spike / PoC (sem código de produção)
+### Fase 0 — Spike / PoC (sem código de produção) ← **próximo passo recomendado**
 **Meta:** validar payloads reais e a decisão v2/Baileys antes de escrever adapter.
-- [ ] Subir Evolution API v2 (Docker/EasyPanel) com Postgres+Redis dedicados e **volume persistente**.
+- [ ] Subir **Evolution API v2** (Docker/EasyPanel) com Postgres+Redis **dedicados** e **volume persistente**.
+- [ ] (Opcional) Subir **Evolution Manager v2** no mesmo EasyPanel só para ops do spike (auth protegida).
 - [ ] Criar 1 instância manual, conectar QR, enviar/receber texto e mídia via `curl`.
 - [ ] Capturar e documentar shapes de: `MESSAGES_UPSERT`, `MESSAGES_UPDATE`, `SEND_MESSAGE`, `CONNECTION_UPDATE`, `QRCODE_UPDATED` (JSONs reais anexados ao doc/ticket).
 - [ ] Confirmar como a Evolution autentica o webhook (header `apikey`?) e o formato do `key.id`/JID.
@@ -289,9 +352,10 @@ Operador/IA → pipeline outbound → `registry.getOutbound(WHATSAPP_EVOLUTION).
 - [ ] `resolveInboundMediaUrl()` / `downloadMedia()` (re-hospedar no MinIO; tratar mídia cifrada Baileys).
 - [ ] `normalizeStatus()` para `MESSAGES_UPDATE` (ack numérico → sent/delivered/read/failed).
 - [ ] `EvolutionContactEnricher` (nome/foto de perfil, lazy — análogo ao Zappfy).
-- [ ] (Opcional) `EvolutionSyncAdapter` (`HistorySyncPort`) para importar histórico ao conectar.
+- [ ] `EvolutionSyncAdapter` (`HistorySyncPort`) — **confirmado (2026-07-20):** importar histórico ao conectar.
 - [ ] UI: card do canal com estado de conexão, reconectar/reescanear, logout; ícone Evolution.
-- **Aceite:** envio/recebimento de todos os tipos de mídia; ticks de status corretos; foto/nome do contato; (se habilitado) histórico importado.
+- [ ] Grupos: **fora do MVP** (default); se usuário confirmar, inbound de grupo entra em S4+ (ver §0 / §15).
+- **Aceite:** envio/recebimento de todos os tipos de mídia; ticks de status corretos; foto/nome do contato; histórico importado ao conectar.
 
 ### Fase 4 — Hardening
 **Meta:** confiabilidade em produção.
@@ -313,12 +377,12 @@ Operador/IA → pipeline outbound → `registry.getOutbound(WHATSAPP_EVOLUTION).
 
 | Story | Fase | Resumo | Critérios de aceite |
 |-------|------|--------|---------------------|
-| **S0 — PoC Evolution + payloads** | 0 | Subir Evolution (Docker/EasyPanel, volume persistente) e documentar payloads reais | Instância conecta via QR; JSONs de `MESSAGES_UPSERT/UPDATE`, `CONNECTION_UPDATE`, `QRCODE_UPDATED` anexados; auth do webhook confirmada; decisão v2/Baileys registrada |
+| **S0 — PoC Evolution + payloads** | 0 | Subir Evolution API (+ Manager v2 opcional) no EasyPanel com Postgres/Redis dedicados; documentar payloads reais | Instância conecta via QR; JSONs anexados; auth do webhook confirmada; decisão v2/Baileys registrada |
 | **S1 — Enum + EvolutionHttpClient + provisionamento** | 1 | `WHATSAPP_EVOLUTION` no enum; client REST; create/connect/state/logout/delete; wire em `channelsService.create/remove` | Criar canal provisiona instância e salva `apikey`; deletar canal remove instância; migration aplica sem downtime |
 | **S2 — QR + estado no painel** | 1 | Endpoints `qrcode`/`connection-state`/`logout`; inbound parcial (`CONNECTION_UPDATE`/`QRCODE_UPDATED`); UI de QR e badge | Operador escaneia e vê "Conectado" em tempo real; estado persiste em `config`; `testConnection` cobre Evolution |
 | **S3 — Inbound + outbound texto** | 2 | Mapper inbound; `EvolutionInboundAdapter` completo; `EvolutionOutboundAdapter` texto; registro no módulo | Texto ponta a ponta; echo não duplica; unit tests do mapper (payloads da S0) verdes |
 | **S4 — Mídia + status + enrichment** | 3 | Mídia (img/áudio/vídeo/doc/sticker/loc/reaction); `MESSAGES_UPDATE`→status; MinIO; enricher de contato | Todos os tipos enviam/recebem; ticks corretos; foto/nome do contato |
-| **S5 — UI canal + (opcional) history sync** | 3 | Card com reconectar/reescanear/logout; ícone; sync opcional | Reconexão via painel funciona; (se habilitado) histórico importado |
+| **S5 — UI canal + history sync** | 3 | Card com reconectar/reescanear/logout; ícone; **import de histórico ao conectar (confirmado)** | Reconexão via painel funciona; histórico importado após connect |
 | **S6 — Hardening + monitoramento** | 4 | Retry/backoff; detecção de instância morta; alertas Sentry/Slack; limpeza de órfãs; (opcional) `ChannelConnectionEvent` | Reconexão observável/recuperável; sem instâncias órfãs; alertas disparam em `close`/`UNROUTED` |
 
 > Estrutura de projeto (SCRUM é team-managed/next-gen): stories linkadas ao Epic via campo **parent**. Subtasks técnicas (migration, testes, UI) podem ser criadas dentro de cada story na execução.
@@ -341,16 +405,18 @@ Operador/IA → pipeline outbound → `registry.getOutbound(WHATSAPP_EVOLUTION).
 
 ---
 
-## 12. Perguntas em aberto (decisão do usuário)
+## 12. Perguntas — status (atualizado 2026-07-20)
 
-1. **Evolution v2 (Baileys) confirmado?** — recomendação: **sim**, Baileys (QR, sem aprovação Meta), mesmo nicho do Zappfy. (Evolution como proxy para Cloud API é redundante com `WHATSAPP_OFFICIAL`.)
-2. **1 instância por canal/número?** — recomendação: **sim** (mapeia 1:1 em `Channel`, billing por `maxChannels`).
-3. **Rodar lado a lado com Zappfy ou substituir?** — recomendação: **lado a lado**; migração é decisão posterior por org.
-4. **Suporte a grupos no dia 1?** — recomendação: **inbound de grupo na Fase 2/3, envio a grupo na Fase 3**. (O schema já tem `Conversation.isGroup`.)
-5. **Onde hospedar a Evolution?** — mesmo Contabo via EasyPanel (serviço dedicado + volume) ou VPS separada? Recomendação: **serviço EasyPanel dedicado** com Postgres/Redis próprios; VPS separada só se a carga crescer.
-6. **Importar histórico ao conectar?** — recomendação: **opcional (Fase 3)**; começar sem import para reduzir escopo.
-7. **Persistência da Evolution:** Postgres/Redis **dedicados** ou reaproveitar os do ChatRespondo com prefixo? Recomendação: **dedicados** (isolar blast radius).
-8. **Guardrail anti-abuso** (cap específico de instâncias + limpeza de sessões mortas) no MVP ou Fase 4? Recomendação: **Fase 4**.
+| # | Pergunta | Status |
+|---|----------|--------|
+| 1 | Evolution v2 (Baileys) vs Cloud API | ✅ **Travado:** Baileys aditivo (ver §0 / §15) |
+| 2 | 1 instância por canal/número | ✅ **Travado:** sim; N canais = N números até `maxChannels` |
+| 3 | Lado a lado com Zappfy | ✅ **Travado:** sim, canais independentes |
+| 4 | Grupos no dia 1 | ⏳ **Pendente clarificação do usuário** — default: **1:1 primeiro**, grupos em S4+ |
+| 5 | Onde hospedar | ✅ **Travado:** mesmo Contabo/EasyPanel |
+| 6 | Importar histórico ao conectar | ✅ **Travado:** sim (Fase 3 / S5) |
+| 7 | Postgres/Redis dedicados | ✅ **Travado:** sim |
+| 8 | Guardrail anti-abuso | Ainda aberto — recomendação: **Fase 4** |
 
 ---
 
@@ -361,11 +427,11 @@ Operador/IA → pipeline outbound → `registry.getOutbound(WHATSAPP_EVOLUTION).
 | 0 | Spike/PoC + payloads | 2–3 dias |
 | 1 | Infra + conectar (QR) | 4–5 dias |
 | 2 | Inbound/outbound texto | 3–4 dias |
-| 3 | Mídia, status, UI, (sync opcional) | 4–5 dias |
+| 3 | Mídia, status, UI, history sync | 4–5 dias |
 | 4 | Hardening + monitoramento | 3–4 dias |
 | — | **Total** | **~3,5–4 semanas** (16–21 dias úteis) |
 
-> Reduzível para ~2,5 semanas se grupos/history sync forem adiados e o blueprint Zappfy for reaproveitado agressivamente.
+> Reduzível para ~2,5 semanas se grupos forem adiados (default) e o blueprint Zappfy for reaproveitado agressivamente. History sync está **confirmado** na Fase 3.
 
 ---
 
@@ -380,3 +446,23 @@ Operador/IA → pipeline outbound → `registry.getOutbound(WHATSAPP_EVOLUTION).
 - Billing: `chatrespondo-api/src/modules/billing/{plans.ts,plan-limits.service.ts}`
 - UI canais: `chatrespondo-web/src/features/channels/*`
 - Roadmap SaaS: `chatrespondo-landing/docs/SAAS-ROADMAP.md`
+
+---
+
+## 15. FAQ (linguagem simples — para o time / produto)
+
+### O que é “Baileys” vs “Cloud API”?
+
+**Baileys** é o motor *não-oficial* que conecta o WhatsApp lendo a sessão do celular (como o Zappfy): você escaneia um QR e o número passa a enviar/receber pelo servidor. É o que a Evolution usa por padrão. **Cloud API** é o WhatsApp **oficial da Meta** (aprovação de negócio, templates HSM, regras mais rígidas) — no ChatRespondo isso já existe como canal `WHATSAPP_OFFICIAL`. Nesta iniciativa **não mexemos** nos canais atuais: só **adicionamos** Evolution (Baileys) como mais uma opção no wizard.
+
+### O que são grupos no WhatsApp neste plano?
+
+- **Grupo** = conversa com vários participantes (não só 1 cliente ↔ 1 número da empresa).
+- **Inbound** = receber mensagens que chegam de grupos e mostrar no painel.
+- **Outbound** = responder ou iniciar mensagens **para** um grupo pelo painel.
+
+**Recomendação atual:** no MVP, focar em conversas **diretas (1:1)**. Grupos ficam para depois (S4+), a menos que o produto confirme que precisa no dia 1.
+
+### Posso ter vários números na mesma empresa?
+
+**Sim.** Cada canal Evolution = 1 número = 1 instance. Pode misturar canais Zappfy e Evolution na mesma org, até o limite `maxChannels` do plano.
