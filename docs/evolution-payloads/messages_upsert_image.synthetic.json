@@ -1,0 +1,32 @@
+{
+  "meta": {
+    "source": "synthetic Evolution webhook messages.upsert (imageMessage)",
+    "note": "URL is encrypted WhatsApp CDN (.enc) — mapper must omit mediaUrl so MediaResolver uses getBase64.",
+    "scrubbed": true
+  },
+  "payload": {
+    "event": "messages.upsert",
+    "instance": "cr_org1_ch1",
+    "apikey": "inst-apikey",
+    "data": {
+      "key": {
+        "id": "3AIMGMEDIA001",
+        "fromMe": false,
+        "remoteJid": "5511XXXXXXXXX@s.whatsapp.net"
+      },
+      "pushName": "Cliente Foto",
+      "message": {
+        "imageMessage": {
+          "url": "https://mmg.whatsapp.net/o1/v/t62.7118-24/f1/m232/up-oil.enc?ccb=9-4",
+          "mimetype": "image/jpeg",
+          "caption": "olha isso",
+          "fileLength": "1305757",
+          "height": 1080,
+          "width": 1920
+        }
+      },
+      "messageType": "imageMessage",
+      "messageTimestamp": 1762351600
+    }
+  }
+}

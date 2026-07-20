@@ -10,7 +10,8 @@ Payloads reais capturados da Evolution API **v2.3.7** no EasyPanel (`evolution.c
 | `connection.update` | `connection_update.json` | ✅ capturado (`state=connecting`) |
 | `connection.update` (`open`) | `connection_update_open.json` | ✅ capturado (QR escaneado; S0 connection SUCCESS) |
 | `messages.upsert` (DM) | `messages_upsert_dm.synthetic.json` | ✅ **sintético** (shape doc oficial + fields findMessages) — live webhook.site ainda ⏳ |
-| `messages.upsert` (grupo `@g.us`) | — | ⏳ ainda **não** no webhook.site — 1 msg em grupo (S4) |
+| `messages.upsert` (grupo `@g.us`) | `messages_upsert_group.synthetic.json` | ✅ **sintético** (S4) — live webhook.site ainda ⏳ |
+| `messages.upsert` (imagem) | `messages_upsert_image.synthetic.json` | ✅ **sintético** (S4; URL `.enc` omitida no mapper) |
 | REST `findMessages` (DM) | `messages_find_dm.json` | ✅ scrubbed (histórico sync; **não** é shape de webhook) |
 | REST `findMessages` (grupo `@g.us`) | `messages_find_group.json` | ✅ scrubbed (histórico sync; **não** é shape de webhook) |
 | `messages.update` / `send.message` | — | ⏳ após mensagens reais via webhook |

@@ -1,0 +1,26 @@
+{
+  "meta": {
+    "source": "synthetic Evolution webhook messages.upsert (group @g.us)",
+    "note": "Shape aligned with messages_find_group.json + webhook envelope. Live capture still pending.",
+    "scrubbed": true
+  },
+  "payload": {
+    "event": "messages.upsert",
+    "instance": "cr_org1_ch1",
+    "apikey": "inst-apikey",
+    "data": {
+      "key": {
+        "id": "3A854D799CACFC203DC8",
+        "fromMe": false,
+        "remoteJid": "120363XXXXXXXXXXX@g.us",
+        "participant": "5511888777666@s.whatsapp.net"
+      },
+      "pushName": "Membro Exemplo",
+      "message": {
+        "conversation": "bom diiaaa"
+      },
+      "messageType": "conversation",
+      "messageTimestamp": 1784552196
+    }
+  }
+}

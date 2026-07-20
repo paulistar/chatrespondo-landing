@@ -360,18 +360,18 @@ Operador/IA → pipeline outbound → `registry.getOutbound(WHATSAPP_EVOLUTION).
 - [x] `EvolutionOutboundAdapter` + `denormalizeText()` para `TEXT` → `POST /message/sendText/{instance}`; `getRateLimits()`; `sendTypingIndicator()` (presence).
 - [x] Registrar inbound+outbound no `ChannelHubModule.onModuleInit`.
 - [x] **1:1 primeiro (S3):** texto DM ponta a ponta; echo/idempotência (pipeline existente).
-- [ ] **Grupos em seguida (S4, ainda MVP):** inbound de `@g.us` (thread/grupo no inbox) + outbound texto para grupo; mapear JID de grupo e participantes mínimos necessários. *(S3: stub — `@g.us` detectado e ignorado no inbound; outbound rejeita com erro claro.)*
-- **Aceite:** (a) DM texto ponta a ponta com status ≥ `SENT` e sem duplicar echo — **código pronto (2026-07-20)**; validação humana após reconectar número (não usar `cr_poc_s0` sob rate limit). (b) mensagem de grupo → S4.
+- [x] **Grupos em seguida (S4, ainda MVP):** inbound de `@g.us` (thread/grupo no inbox) + outbound texto para grupo; mapear JID de grupo e participantes mínimos necessários. ✅ **DONE (2026-07-20)** — stub removido; JID `@g.us` preservado no send.
+- **Aceite:** (a) DM texto ponta a ponta com status ≥ `SENT` e sem duplicar echo — **código pronto (2026-07-20)**; validação humana após reconectar número (não usar `cr_poc_s0` sob rate limit). (b) mensagem de grupo → **código S4 pronto**; validação humana pendente.
 
 ### Fase 3 — Mídia, status, presença, UI e history sync
 **Meta:** paridade funcional com o canal Zappfy (inclui grupos já entregues na Fase 2 / S4).
-- [ ] `denormalize()` para IMAGE/AUDIO(ptt)/VIDEO/DOCUMENT/STICKER/LOCATION/REACTION (1:1 e grupo).
-- [ ] `resolveInboundMediaUrl()` / `downloadMedia()` (re-hospedar no MinIO; tratar mídia cifrada Baileys).
-- [ ] `normalizeStatus()` para `MESSAGES_UPDATE` (ack numérico → sent/delivered/read/failed).
-- [ ] `EvolutionContactEnricher` (nome/foto de perfil, lazy — análogo ao Zappfy).
-- [ ] `EvolutionSyncAdapter` (`HistorySyncPort`) — **confirmado (2026-07-20):** importar histórico ao conectar.
-- [ ] UI: card do canal com estado de conexão, reconectar/reescanear, logout; ícone Evolution.
-- **Aceite:** envio/recebimento de todos os tipos de mídia; ticks de status corretos; foto/nome do contato; histórico importado ao conectar.
+- [x] `denormalize()` para IMAGE/AUDIO(ptt)/VIDEO/DOCUMENT/STICKER/LOCATION/REACTION (1:1 e grupo). ✅ S4 (2026-07-20)
+- [x] `resolveInboundMediaUrl()` / `downloadMedia()` (re-hospedar via UploadsService; `getBase64FromMediaMessage` para `.enc`). ✅ S4
+- [x] `normalizeStatus()` para `MESSAGES_UPDATE` (ack numérico / SERVER_ACK/DELIVERY_ACK/READ → sent/delivered/read/failed). ✅ S4
+- [x] `EvolutionContactEnricher` (foto 1:1 + nome/foto grupo via findGroupInfos, lazy). ✅ S4
+- [ ] `EvolutionSyncAdapter` (`HistorySyncPort`) — **confirmado (2026-07-20):** importar histórico ao conectar. → **S5**
+- [ ] UI: card do canal com estado de conexão, reconectar/reescanear, logout; ícone Evolution. → **S5**
+- **Aceite:** envio/recebimento de tipos de mídia no código ✅; ticks de status ✅; foto/nome ✅; histórico/UI → S5. Validação humana pós-reconnect.
 
 ### Fase 4 — Hardening
 **Meta:** confiabilidade em produção.
@@ -397,7 +397,7 @@ Operador/IA → pipeline outbound → `registry.getOutbound(WHATSAPP_EVOLUTION).
 | **S1 — Enum + EvolutionHttpClient + provisionamento** | 1 | `WHATSAPP_EVOLUTION` no enum; client REST; create/connect/state/logout/delete; wire em `channelsService.create/remove` | ✅ **DONE (2026-07-20)** api `d3c781f` |
 | **S2 — QR + estado no painel** | 1 | Endpoints `qrcode`/`connection-state`/`logout`; inbound parcial (`CONNECTION_UPDATE`/`QRCODE_UPDATED`); UI de QR e badge | ✅ **DONE (2026-07-20)** api `0c70237` · web `749dcb9` (`3067797` deploy) · landing docs `7533ac9`; scan humano pendente (cooldown PoC) |
 | **S3 — Inbound + outbound texto 1:1** | 2 | Mapper inbound; `EvolutionInboundAdapter` completo; `EvolutionOutboundAdapter` texto; registro no módulo — **só DMs primeiro** | ✅ **DONE (2026-07-20)** api `ff11fa8`; grupos stub → S4; teste humano pós-reconnect |
-| **S4 — Grupos (inbound + outbound) + mídia/status/enrichment** | 2→3 | **Grupos no MVP (confirmado):** inbound `@g.us` + outbound texto para grupo; em seguida mídia (img/áudio/vídeo/doc/sticker/loc/reaction); `MESSAGES_UPDATE`→status; MinIO; enricher | Grupo recebe/envia texto no painel; todos os tipos de mídia; ticks corretos; foto/nome do contato |
+| **S4 — Grupos (inbound + outbound) + mídia/status/enrichment** | 2→3 | **Grupos no MVP (confirmado):** inbound `@g.us` + outbound texto/mídia para grupo; mídia (img/áudio/vídeo/doc/sticker/loc/reaction); `MESSAGES_UPDATE`→status; re-host UploadsService; enricher | ✅ **DONE (2026-07-20)** api `60dd23d`; fixtures sintéticas grupo+imagem; teste humano pós-reconnect |
 | **S5 — UI canal + history sync** | 3 | Card com reconectar/reescanear/logout; ícone; **import de histórico ao conectar (confirmado)** | Reconexão via painel funciona; histórico importado após connect |
 | **S6 — Hardening + monitoramento** | 4 | Retry/backoff; detecção de instância morta; alertas Sentry/Slack; limpeza de órfãs; (opcional) `ChannelConnectionEvent` — **depois** de 1:1 + grupos + mídia | Reconexão observável/recuperável; sem instâncias órfãs; alertas disparam em `close`/`UNROUTED` |
 
