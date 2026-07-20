@@ -344,14 +344,14 @@ Operador/IA → pipeline outbound → `registry.getOutbound(WHATSAPP_EVOLUTION).
 
 ### Fase 1 — Infra + conectar instância (QR)
 **Meta:** criar canal Evolution e conectar um número; ainda sem mensageria de produção.
-- [ ] Migration: adicionar `WHATSAPP_EVOLUTION` ao enum `ChannelType`.
-- [ ] `EvolutionModule` + `EvolutionHttpClient` (`createInstance`, `connect/qrcode`, `connectionState`, `logout`, `deleteInstance`) usando `EVOLUTION_SERVER_URL` + `EVOLUTION_API_KEY`.
-- [ ] `channelsService.create()`: gerar `instanceName`, provisionar instância (análogo a `configureZappfyWebhook`), salvar `apikey`.
-- [ ] Endpoints: `GET /channels/:id/qrcode`, `GET /channels/:id/connection-state`, `POST /channels/:id/logout`; `testConnection` cobre `WHATSAPP_EVOLUTION`.
-- [ ] `EvolutionInboundAdapter` **parcial**: tratar só `CONNECTION_UPDATE`/`QRCODE_UPDATED` (atualiza `config`, emite realtime). Registrar inbound no registry.
-- [ ] Painel: opção "WhatsApp (Evolution)" no wizard + tela de QR (polling ou WS) + badge de estado.
-- [ ] `channelsService.remove()`: deletar instância na Evolution (fire-and-forget).
-- **Aceite:** operador cria canal Evolution, escaneia QR, vê "Conectado"; deletar canal remove a instância. Mensageria ainda não fluindo (ou só auditada).
+- [x] Migration: adicionar `WHATSAPP_EVOLUTION` ao enum `ChannelType`.
+- [x] `EvolutionModule` + `EvolutionHttpClient` (`createInstance`, `connect/qrcode`, `connectionState`, `logout`, `deleteInstance`) usando `EVOLUTION_SERVER_URL` + `EVOLUTION_API_KEY`.
+- [x] `channelsService.create()`: gerar `instanceName`, provisionar instância (análogo a `configureZappfyWebhook`), salvar `apikey`.
+- [x] Endpoints: `GET /channels/:id/qrcode`, `GET /channels/:id/connection-state`, `POST /channels/:id/logout`; `testConnection` cobre `WHATSAPP_EVOLUTION`.
+- [x] `EvolutionInboundAdapter` **parcial**: tratar só `CONNECTION_UPDATE`/`QRCODE_UPDATED` (atualiza `config`, emite realtime). Registrar inbound no registry.
+- [x] Painel: opção "WhatsApp (Evolution)" no wizard + tela de QR (polling ou WS) + badge de estado.
+- [x] `channelsService.remove()`: deletar instância na Evolution (fire-and-forget).
+- **Aceite:** operador cria canal Evolution, escaneia QR, vê "Conectado"; deletar canal remove a instância. Mensageria ainda não fluindo (ou só auditada). — **S1+S2 código pronto (2026-07-20); scan humano do QR fica para o operador (não usar `cr_poc_s0` — rate limit).**
 
 ### Fase 2 — Inbound + outbound texto **1:1** (+ grupos na sequência MVP)
 **Meta:** conversa de texto ponta a ponta — **primeiro 1:1**, depois grupos na mesma onda MVP (antes do hardening).
@@ -394,8 +394,8 @@ Operador/IA → pipeline outbound → `registry.getOutbound(WHATSAPP_EVOLUTION).
 | Story | Fase | Resumo | Critérios de aceite |
 |-------|------|--------|---------------------|
 | **S0 — PoC Evolution + payloads** | 0 | Subir Evolution API (+ Manager v2 opcional) no EasyPanel com Postgres/Redis dedicados; documentar payloads reais (**1:1 e grupo**) | **Parcial (2026-07-20):** infra + URL + QR API + auth webhook (body) ✅; scan celular + fixtures DM/`@g.us` ⏳ — ver `EVOLUTION-OPS-S0.md` |
-| **S1 — Enum + EvolutionHttpClient + provisionamento** | 1 | `WHATSAPP_EVOLUTION` no enum; client REST; create/connect/state/logout/delete; wire em `channelsService.create/remove` | Criar canal provisiona instância e salva `apikey`; deletar canal remove instância; migration aplica sem downtime |
-| **S2 — QR + estado no painel** | 1 | Endpoints `qrcode`/`connection-state`/`logout`; inbound parcial (`CONNECTION_UPDATE`/`QRCODE_UPDATED`); UI de QR e badge | Operador escaneia e vê "Conectado" em tempo real; estado persiste em `config`; `testConnection` cobre Evolution |
+| **S1 — Enum + EvolutionHttpClient + provisionamento** | 1 | `WHATSAPP_EVOLUTION` no enum; client REST; create/connect/state/logout/delete; wire em `channelsService.create/remove` | ✅ **DONE (2026-07-20)** api `d3c781f` |
+| **S2 — QR + estado no painel** | 1 | Endpoints `qrcode`/`connection-state`/`logout`; inbound parcial (`CONNECTION_UPDATE`/`QRCODE_UPDATED`); UI de QR e badge | ✅ **DONE (2026-07-20)** — ver commits S2; scan humano pendente (cooldown PoC) |
 | **S3 — Inbound + outbound texto 1:1** | 2 | Mapper inbound; `EvolutionInboundAdapter` completo; `EvolutionOutboundAdapter` texto; registro no módulo — **só DMs primeiro** | Texto 1:1 ponta a ponta; echo não duplica; unit tests do mapper (payloads da S0) verdes |
 | **S4 — Grupos (inbound + outbound) + mídia/status/enrichment** | 2→3 | **Grupos no MVP (confirmado):** inbound `@g.us` + outbound texto para grupo; em seguida mídia (img/áudio/vídeo/doc/sticker/loc/reaction); `MESSAGES_UPDATE`→status; MinIO; enricher | Grupo recebe/envia texto no painel; todos os tipos de mídia; ticks corretos; foto/nome do contato |
 | **S5 — UI canal + history sync** | 3 | Card com reconectar/reescanear/logout; ícone; **import de histórico ao conectar (confirmado)** | Reconexão via painel funciona; histórico importado após connect |

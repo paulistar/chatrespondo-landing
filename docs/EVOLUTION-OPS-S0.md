@@ -39,14 +39,88 @@ Ao atualizar env: **sempre merge** (nunca wipe). Copiar o bloco atual do painel,
 
 Já criada: **`cr_poc_s0`** (Baileys, `groupsIgnore=false`).
 
-- **Conexão S0:** em 2026-07-20 chegou a `open` após scan; um logout indevido derrubou a sessão. Reconexão: QR renovado via `/instance/connect` (estado `connecting`) — **reescaneie** no celular. **Não** usar logout para regenerar QR.
-- Perfil conectado: **Mart Studios** (owner JID mascarado nos fixtures).
+- **Estado atual (2026-07-20 ~11:35 BRT):** `connectionState` = **`connecting`** (não `open`). Owner JID residual aponta para `5515997554870@s.whatsapp.net` / perfil **Mart Studios**, mas **sessão não está aberta**.
+- **Rate limit WhatsApp (confirmado por sintomas):** QR → “tente novamente mais tarde”; pairing code → “errado” / inválido após muitas regenerações. **NÃO gerar mais QR nem pairing agora.**
+- Histórico: chegou a `open` no mesmo dia; logout indevido derrubou; várias tentativas de QR + pairing (incl. restart/logout/connect) agravaram o throttle.
 - `hash` retornado no create = **apikey da instância** (guardar no EasyPanel/ops, não no git).
 - Webhook PoC: https://webhook.site/63f839ce-ad71-4c33-9a59-092dfdfbc0ab (captura de payloads).
+- Apikey global EasyPanel (`AUTHENTICATION_API_KEY`): mascarada `2860…23da` (não commitar valor completo).
 
 > **⚠️ NUNCA faça logout de uma PoC live só para regenerar QR.**  
 > Se `connectionState` = `open`, **não** chame `DELETE /instance/logout/{name}`. Logout derruba a sessão WhatsApp já pareada.  
 > Para renovar QR só quando o estado for `close` / `connecting` (sem sessão útil): use `GET /instance/connect/{name}`. Se já estiver `open`, reporte sucesso e não faça nada destrutivo.
+
+### Cooldown / rate limit WhatsApp (obrigatório)
+
+Sintomas típicos após muitas tentativas de QR/pairing no **mesmo número**:
+
+| Sintoma no celular | Causa provável |
+|--------------------|----------------|
+| QR: “não é possível ler / tente novamente mais tarde” | Throttle do WhatsApp |
+| Código de pareamento: “errado” / inválido logo ao digitar | Código expirado **ou** throttle (não necessariamente formato do número) |
+
+**Ação:**
+
+1. **Parar** — zero `GET /instance/connect`, zero QR novo, zero pairing novo.
+2. **Esperar 30–60 minutos** (se ainda falhar após 1 tentativa pós-cooldown → **pausar até o dia seguinte** ou usar **outro número** só para PoC).
+3. Só então seguir o [plano de recuperação](#plano-de-recuperação-após-cooldown) abaixo.
+4. No máximo **1** tentativa de pairing (ou 1 QR) por janela de cooldown.
+
+### Pairing code — fluxo Evolution v2.3.7 (documentado)
+
+Endpoint oficial:
+
+```http
+GET /instance/connect/{instanceName}?number={E164_DIGITS}
+Header: apikey: <AUTHENTICATION_API_KEY>
+```
+
+Exemplo:
+
+```bash
+curl -sS -H "apikey: $EVO_GLOBAL_KEY" \
+  "$EVO_URL/instance/connect/cr_poc_s0?number=5515997554870"
+```
+
+Resposta esperada (quando WhatsApp aceita):
+
+```json
+{
+  "pairingCode": "ABCD1234",
+  "code": "2@...",
+  "base64": "data:image/png;base64,...",
+  "count": 1
+}
+```
+
+- Query param: **`number`** (só dígitos, com DDI `55`, **sem** `+`, espaços ou hífens).
+- Formato BR celular moderno: **`55` + DDD + `9` + 8 dígitos** → ex. `5515997554870`.
+- Alternativa sem o 9 (`551597554870`): só se a primeira falhar por formato — **no máximo 1 tentativa** do formato alternativo, depois **STOP**.
+- Exibir o código como **XXXX-XXXX** (8 chars; hífen só visual). Digitar **exatamente** o que a API devolveu.
+- Código expira rápido (~1 min). Não reutilizar código antigo (`MXVK-PN8A` etc. já inválidos).
+- Melhor prática (issues Evolution/Baileys): pedir pairing **logo após** create (ou logout limpo de sessão não-`open`), com `number` na query — não spammar connect.
+
+**No celular:**
+
+1. WhatsApp → **Aparelhos conectados** → **Conectar um aparelho**
+2. **Conectar com número de telefone** (não escanear QR se estiver em throttle)
+3. Digitar o código **exatamente** (maiúsculas, com hífen se a tela mostrar)
+
+### Plano de recuperação (após cooldown)
+
+1. Esperar **30–60 min** sem nenhum connect/QR/pairing.
+2. Conferir estado (só leitura):
+
+   ```bash
+   curl -sS -H "apikey: $EVO_GLOBAL_KEY" \
+     "$EVO_URL/instance/connectionState/cr_poc_s0"
+   ```
+
+   Se já for `open` → **parar** (sucesso).
+3. Se ainda `connecting`/`close`: **uma vez** — deletar instância e recriar limpa (`WHATSAPP-BAILEYS`, `qrcode: true`, `groupsIgnore: false`). Ideal: passar `number` no create **ou** chamar connect com `?number=` imediatamente após create.
+4. **Uma única** tentativa de pairing code com `5515997554870`.
+5. Se falhar de novo com “tente mais tarde” / código errado: **não insistir** — pausar S0 até amanhã **ou** usar outro chip/número só para PoC.
+6. S1 (código ChatRespondo) pode avançar em paralelo **sem** WhatsApp live; PoC de conexão fica bloqueada pelo throttle.
 
 ### Criar outra instância
 
@@ -172,7 +246,22 @@ A partir de v2.4.0 a Foundation exige ativação/licença — evitar `latest` at
 
 ## Pronto para S1?
 
-**Sim.** Infra + URL + QR + conexão `open` + fixtures `qrcode`/`connection.update` + samples REST `findMessages` (DM+grupo): ✅  
+Infra + URL + fixtures `qrcode`/`connection.update` + samples REST `findMessages` (DM+grupo): ✅  
 
-Pendência formal S0 (webhook): `messages.upsert` DM + grupo no catcher (1 envio cada). Não bloqueia início de S1 — mapper pode usar `messages_find_*` para campos `key`/`message`; validação do envelope webhook fica quando houver upsert ao vivo.  
-S1 (enum `WHATSAPP_EVOLUTION` + `EvolutionHttpClient` + QR endpoints) **já pode começar**.
+**Bloqueio PoC live (2026-07-20):** sessão **não** `open`; WhatsApp em **rate limit** no número `5515997554870`. Não gera QR/pairing até cooldown (30–60 min) ou outro número / amanhã.
+
+Pendência formal S0 (webhook): `messages.upsert` DM + grupo no catcher (1 envio cada).  
+
+S1 (enum `WHATSAPP_EVOLUTION` + `EvolutionHttpClient` + QR endpoints) **pode avançar sem WhatsApp live** (código + mocks/fixtures). Reconexão humana do `cr_poc_s0` fica para depois do cooldown.
+
+## S2 — status (2026-07-20)
+
+Código S2 entregue (API + painel):
+- `GET /channels/:id/qrcode`, `GET /channels/:id/connection-state`, `POST /channels/:id/logout`
+- Inbound parcial: `connection.update` / `qrcode.updated` → `config` + realtime
+- UI: wizard Evolution + diálogo QR + badge de estado
+
+**Não** chamar connect no `cr_poc_s0` enquanto rate-limited. Para testar ao voltar:
+1. Painel → Novo canal → WhatsApp (Evolution) → nome → Criar e conectar
+2. Escanear QR no celular (Aparelhos conectados)
+3. Badge deve ir para **Conectado** (polling 3s + webhook)
