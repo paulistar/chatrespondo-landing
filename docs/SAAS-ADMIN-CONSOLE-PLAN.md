@@ -249,16 +249,18 @@ model AdminAuditLog {
 
 > Cada fase é mergeável e deployável sem tocar o painel de tenant. Enquanto `AdminModule` não estiver liberado, `/admin/*` simplesmente responde 403/404.
 
-### P0 — Fundação + console read-only
-**Meta:** `contato@` acessa um console que lista todas as orgs e mostra métricas básicas; agência nunca acessa.
-- Data model: `PlatformAdmin`, `PlatformAdminRole`, `AdminAuditLog` (migration) + seed idempotente do `contato@`.
+### P0 — Fundação + console + CRUD de admins
+**Meta:** `contato@` acessa um console que lista **Clientes** (todas as orgs), métricas básicas e gerencia Platform Admins; tenant comum nunca acessa.
+- Data model: `PlatformAdmin`, `PlatformAdminRole`, `AdminAuditLog` (migration) + seed/migration idempotente do `contato@`.
 - `PlatformAdminGuard` (+ cache Redis) + `AdminModule` + `GET /admin/me`.
-- `GET /admin/orgs` (lista + filtros/paginação) e `GET /admin/orgs/:id` (detalhe read-only, reusa `getBillingStatus`).
-- `GET /admin/metrics/overview` (signups, trials, distribuição por status; MRR simplificado).
-- Frontend: route group `(admin)`, sidebar admin, gate por `/admin/me`, Dashboard + Clientes/Orgs (lista + detalhe).
-- Infra de auditoria (helper que grava `AdminAuditLog`) — mesmo que P0 seja read-only, deixar pronto.
+- `GET /admin/orgs` (lista + filtros/paginação, incl. **inativo** conforme §10) e `GET /admin/orgs/:id` (detalhe read-only, reusa `getBillingStatus`).
+- `GET /admin/metrics/overview` (signups, trials, distribuição por status; MRR simplificado §10).
+- **CRUD Platform Admins (P0+):** `GET/POST/DELETE /admin/platform-admins` (list/grant-by-email/revoke), só `SUPER_ADMIN`, auditado.
+- Frontend: route group `(admin)`, sidebar admin, gate por `/admin/me`, Dashboard + **Clientes** (lista + detalhe) + **Configurações** (CRUD admins).
+- Infra de auditoria (`AdminAuditLog`) pronta; mutações de admin já auditam.
 - **Critérios de aceite:**
-  - Logado como `contato@`, vejo lista de **todas** as orgs e um dashboard com contadores reais.
+  - Logado como `contato@`, vejo lista de **todos os Clientes** e um dashboard com contadores reais.
+  - Em `/admin/settings`, `contato@` lista/concede/revoga outros Platform Admins.
   - Logado como OWNER/ADMIN de org comum, `GET /admin/*` retorna **403** e a rota `/admin` não renderiza.
   - Nenhuma regressão no painel de tenant (smoke test).
 
@@ -292,7 +294,8 @@ model AdminAuditLog {
 | Story | Fase | Resumo | Critérios de aceite |
 |-------|------|--------|---------------------|
 | **HQ-1** — Data model + guard | P0 | `PlatformAdmin`/`PlatformAdminRole`/`AdminAuditLog` (migration) + seed `contato@`; `PlatformAdminGuard` + cache; `AdminModule` + `GET /admin/me` | Migration aplica; seed idempotente; guard nega tenant (403) e libera admin |
-| **HQ-2** — Orgs cross-tenant (API) | P0 | `GET /admin/orgs` (filtros/paginação) + `GET /admin/orgs/:id` (reusa `getBillingStatus`) | Lista todas as orgs; detalhe traz plano/status/uso |
+| **HQ-1b** — CRUD Platform Admins | P0 | List/grant/revoke em `/admin/platform-admins` + UI Settings; só SUPER_ADMIN; auditado | `contato@` concede/revoga; tenant 403 |
+| **HQ-2** — Clientes cross-tenant (API) | P0 | `GET /admin/orgs` (filtros incl. inativo §10 + paginação) + `GET /admin/orgs/:id` (reusa `getBillingStatus`) | Lista todos os Clientes; detalhe traz plano/status/uso |
 | **HQ-3** — Métricas overview (API) | P0 | `GET /admin/metrics/overview` (signups, trials, distribuição, MRR simplificado) | Números batem com o banco |
 | **HQ-4** — Frontend console base | P0 | Route group `(admin)`, sidebar, gate `/admin/me`, Dashboard + Clientes/Orgs | `contato@` navega; tenant nunca vê `/admin` |
 | **HQ-5** — Assinaturas & Planos | P1 | `GET /admin/subscriptions`; operações forçar plano + exempt (auditadas) + UI | Ações refletem no billing e geram auditoria |
@@ -307,16 +310,23 @@ model AdminAuditLog {
 
 ---
 
-## 10. Perguntas em aberto (para o usuário)
+## 10. Decisões travadas (2026-07-20)
 
-1. **Sub-papéis de plataforma:** implementar só `SUPER_ADMIN` no MVP (recomendado) ou já aplicar escopos `FINANCE`/`SUPPORT` desde P1?
-2. **Host:** aceitar `/admin/*` no painel atual no P0 e migrar para `admin.chatrespondo.com` depois (recomendado), ou já nascer em host separado?
-3. **Impersonation:** "ver como" read-only é desejado? Se sim, há restrição LGPD/contratual para acesso a dados de titular pelo suporte?
-4. **Financeiro:** invoices via proxy Stripe (fonte da verdade, recomendado) atende, ou querem persistir faturas localmente para relatórios offline?
-5. **Cupons/descontos:** gerir no Stripe Dashboard (MVP) é suficiente, ou precisam de gestão in-app já em P1?
-6. **Definição de "inativo":** qual regra? (sem login há N dias / sem canal ativo / `deletedAt` / trial expirado sem conversão). Precisamos do N.
-7. **Quem mais é Platform Admin** além de `contato@`? (emails para o seed).
-8. **MRR:** calcular a partir do Stripe (assinaturas ativas) ou do `PLAN_CATALOG` × orgs pagantes? (impacta precisão vs. simplicidade).
+| # | Tema | Decisão |
+|---|------|---------|
+| 1 | **Seed inicial** | Apenas `contato@chatrespondo.com` como `SUPER_ADMIN` inicialmente (migration/seed idempotente). |
+| 2 | **CRUD de Platform Admins** | Incluído no P0 (mínimo): listar / conceder (por e-mail) / revogar sob `/admin/settings`, **somente `SUPER_ADMIN`**, com auditoria. Não fica só no seed. |
+| 3 | **Terminologia UI** | Usar **Clientes** (não só “agências”) — qualquer `Organization` que contrata o ChatRespondo. |
+| 4 | **Definição de "Inativo"** | (a) esteve em **trial** e **não converteu** para plano pago (trial expirado / expirado sem assinatura ativa); **OU** (b) teve plano pago e **não renovou** (`canceled` / `expired` após ter estado ativo). `past_due` e `trialing` **não** são inativos. `billingExempt` **não** é inativo. |
+| 5 | **Sub-papéis** | Enum `SUPER_ADMIN` / `FINANCE` / `SUPPORT` no data model; MVP aplica só `SUPER_ADMIN` (gates prontos). |
+| 6 | **Host** | Rotas `/admin/*` no painel atual (`panel.chatrespondo.com`) no P0; extração para `admin.chatrespondo.com` fica para P3. |
+| 7 | **MRR (dashboard P0)** | **Simplificado:** `PLAN_CATALOG.priceMonthlyBrl` × orgs com status efetivo `active` (e plano pago com preço). Stripe detalhado fica em P1. |
+
+### Perguntas ainda abertas (não bloqueiam P0)
+
+1. **Impersonation:** "ver como" read-only é desejado? Restrição LGPD/contratual?
+2. **Financeiro P1:** invoices via proxy Stripe atende, ou persistir faturas localmente?
+3. **Cupons:** Stripe Dashboard (MVP) vs gestão in-app em P1?
 
 ---
 
