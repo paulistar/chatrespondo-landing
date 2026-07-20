@@ -369,9 +369,9 @@ Operador/IA → pipeline outbound → `registry.getOutbound(WHATSAPP_EVOLUTION).
 - [x] `resolveInboundMediaUrl()` / `downloadMedia()` (re-hospedar via UploadsService; `getBase64FromMediaMessage` para `.enc`). ✅ S4
 - [x] `normalizeStatus()` para `MESSAGES_UPDATE` (ack numérico / SERVER_ACK/DELIVERY_ACK/READ → sent/delivered/read/failed). ✅ S4
 - [x] `EvolutionContactEnricher` (foto 1:1 + nome/foto grupo via findGroupInfos, lazy). ✅ S4
-- [ ] `EvolutionSyncAdapter` (`HistorySyncPort`) — **confirmado (2026-07-20):** importar histórico ao conectar. → **S5**
-- [ ] UI: card do canal com estado de conexão, reconectar/reescanear, logout; ícone Evolution. → **S5**
-- **Aceite:** envio/recebimento de tipos de mídia no código ✅; ticks de status ✅; foto/nome ✅; histórico/UI → S5. Validação humana pós-reconnect.
+- [x] `EvolutionSyncAdapter` (`HistorySyncPort`) — **confirmado (2026-07-20):** importar histórico ao conectar. → **S5** ✅
+- [x] UI: card do canal com estado de conexão, reconectar/reescanear, logout; ícone Evolution; botão **Importar histórico** + progresso. → **S5** ✅
+- **Aceite:** envio/recebimento de tipos de mídia no código ✅; ticks de status ✅; foto/nome ✅; histórico/UI ✅ S5. Validação humana pós-reconnect.
 
 ### Fase 4 — Hardening
 **Meta:** confiabilidade em produção.
@@ -398,7 +398,7 @@ Operador/IA → pipeline outbound → `registry.getOutbound(WHATSAPP_EVOLUTION).
 | **S2 — QR + estado no painel** | 1 | Endpoints `qrcode`/`connection-state`/`logout`; inbound parcial (`CONNECTION_UPDATE`/`QRCODE_UPDATED`); UI de QR e badge | ✅ **DONE (2026-07-20)** api `0c70237` · web `749dcb9` (`3067797` deploy) · landing docs `7533ac9`; scan humano pendente (cooldown PoC) |
 | **S3 — Inbound + outbound texto 1:1** | 2 | Mapper inbound; `EvolutionInboundAdapter` completo; `EvolutionOutboundAdapter` texto; registro no módulo — **só DMs primeiro** | ✅ **DONE (2026-07-20)** api `ff11fa8`; grupos stub → S4; teste humano pós-reconnect |
 | **S4 — Grupos (inbound + outbound) + mídia/status/enrichment** | 2→3 | **Grupos no MVP (confirmado):** inbound `@g.us` + outbound texto/mídia para grupo; mídia (img/áudio/vídeo/doc/sticker/loc/reaction); `MESSAGES_UPDATE`→status; re-host UploadsService; enricher | ✅ **DONE (2026-07-20)** api `60dd23d`; fixtures sintéticas grupo+imagem; teste humano pós-reconnect |
-| **S5 — UI canal + history sync** | 3 | Card com reconectar/reescanear/logout; ícone; **import de histórico ao conectar (confirmado)** | Reconexão via painel funciona; histórico importado após connect |
+| **S5 — UI canal + history sync** | 3 | Card com reconectar/reescanear/logout; ícone; **import de histórico ao conectar (confirmado)** | ✅ **DONE (2026-07-20)** api + web — `EvolutionSyncAdapter` (findChats/findMessages), auto-import em `CONNECTION_UPDATE open`, botão **Importar histórico**, lookback via `EVOLUTION_HISTORY_LOOKBACK_DAYS` (default 30, max 90) |
 | **S6 — Hardening + monitoramento** | 4 | Retry/backoff; detecção de instância morta; alertas Sentry/Slack; limpeza de órfãs; (opcional) `ChannelConnectionEvent` — **depois** de 1:1 + grupos + mídia | Reconexão observável/recuperável; sem instâncias órfãs; alertas disparam em `close`/`UNROUTED` |
 
 > Estrutura de projeto (SCRUM é team-managed/next-gen): stories linkadas ao Epic via campo **parent**. Subtasks técnicas (migration, testes, UI) podem ser criadas dentro de cada story na execução.
