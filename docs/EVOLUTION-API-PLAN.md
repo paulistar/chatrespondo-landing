@@ -294,8 +294,8 @@ Operador/IA → pipeline outbound → `registry.getOutbound(WHATSAPP_EVOLUTION).
 | Vetor | Medida |
 |-------|--------|
 | **Global API key da Evolution** | `EVOLUTION_API_KEY` + `EVOLUTION_SERVER_URL` em env do serviço API (nunca no `config` do canal, nunca no front). Só o backend cria/deleta instâncias. |
-| **apikey por instância** | Retornada no `create`, guardada em `config.apikey`. Usada como header em envios **e** para validar o webhook inbound (comparação `crypto.timingSafeEqual`, exatamente como `ZappfyInboundAdapter.validateWebhook`). |
-| **Autenticidade do webhook** | `extractLocators` lê `instance` do payload + header `apikey`; `matchesChannel` casa `config.instanceName`; `validateWebhook` confere apikey. Payloads sem match → `recordUnrouted` (auditoria) e descarte. |
+| **apikey por instância** | Retornada no `create` como `hash`, guardada em `config.apikey`. Usada como header `apikey` em envios REST. |
+| **Autenticidade do webhook** | **Confirmado no PoC (2026-07-20):** a Evolution envia `apikey` no **body** do webhook (não no header HTTP). `extractLocators` lê `instance` + `apikey` do payload; `matchesChannel` casa `config.instanceName`; `validateWebhook` confere apikey com `timingSafeEqual`. Payloads sem match → `recordUnrouted` e descarte. |
 | **Isolamento de tenant** | `instanceName` codifica `orgId`; toda mensagem resolve org via `Channel`. Impossível rotear evento para org errada. |
 | **Exposição de rede** | Evolution **não** publicamente acessível: expor só via Cloudflare Tunnel/rede interna do EasyPanel; Manager UI protegido (basic auth/IP allowlist) ou desabilitado; apenas a API ChatRespondo alcança a REST. |
 | **Segredos em repouso** | `config.apikey` hoje fica em texto puro (dívida pré-existente: Zappfy `token`, WA `accessToken`/`appSecret` idem). **Não** introduzir criptografia agora para não divergir; registrar como melhoria transversal (`Channel.config` encryption) fora deste escopo. |
@@ -318,14 +318,28 @@ Operador/IA → pipeline outbound → `registry.getOutbound(WHATSAPP_EVOLUTION).
 
 > Cada fase é mergeável e deployável sem quebrar produção. Novo `ChannelType` é aditivo; enquanto o adapter não estiver registrado, criar canal Evolution simplesmente não é oferecido no painel (feature-gated).
 
-### Fase 0 — Spike / PoC (sem código de produção) ← **próximo passo recomendado**
+### Fase 0 — Spike / PoC (sem código de produção) ← **em andamento (infra ✅)**
 **Meta:** validar payloads reais e a decisão v2/Baileys antes de escrever adapter.
-- [ ] Subir **Evolution API v2** (Docker/EasyPanel) com Postgres+Redis **dedicados** e **volume persistente**.
-- [ ] (Opcional) Subir **Evolution Manager v2** no mesmo EasyPanel só para ops do spike (auth protegida).
-- [ ] Criar 1 instância manual, conectar QR, enviar/receber texto e mídia via `curl`.
-- [ ] Capturar e documentar shapes de: `MESSAGES_UPSERT`, `MESSAGES_UPDATE`, `SEND_MESSAGE`, `CONNECTION_UPDATE`, `QRCODE_UPDATED` (JSONs reais anexados ao doc/ticket) — **incluir 1:1 e grupo (`@g.us`)** (grupos no MVP).
-- [ ] Confirmar como a Evolution autentica o webhook (header `apikey`?) e o formato do `key.id`/JID.
-- **Aceite:** doc com payloads confirmados (DM + grupo) + decisão registrada (v2 Baileys). **Nenhum merge no app.**
+- [x] Subir **Evolution API v2** (Docker/EasyPanel) com Postgres+Redis **dedicados** e **volume persistente**.
+- [ ] (Opcional) Subir **Evolution Manager v2** no mesmo EasyPanel só para ops do spike (auth protegida). — **adiado** (API primeiro).
+- [x] Criar 1 instância manual (`cr_poc_s0`), obter QR via API; **scan no celular + send/receive** pendente (ação humana).
+- [~] Capturar shapes: `QRCODE_UPDATED` + `CONNECTION_UPDATE` (connecting) ✅ em `docs/evolution-payloads/`; `MESSAGES_UPSERT` DM+grupo / `open` ⏳ após QR.
+- [x] Confirmar auth do webhook: **`apikey` no body JSON** (não no header HTTP). Ver `EVOLUTION-OPS-S0.md`.
+- **Aceite:** parcial — infra + auth webhook + QR API ok; falta scan + fixtures DM/grupo para fechar S0 formal. **Nenhum merge no app.**
+
+#### Resultados Fase 0 (2026-07-20)
+
+| Item | Valor |
+|------|--------|
+| Projeto EasyPanel | `chatrespondo` |
+| Serviços | `evolution-postgres`, `evolution-redis`, `evolution-api` |
+| Imagem | `evoapicloud/evolution-api:v2.3.7` (pin; evitar `latest` ≥2.4 por license) |
+| URL pública | https://evolution.chatrespondo.com |
+| Volume | `evolution-instances` → `/evolution/instances` |
+| Instância PoC | `cr_poc_s0` (Baileys, grupos habilitados) |
+| Ops | `docs/EVOLUTION-OPS-S0.md` |
+| Fixtures | `docs/evolution-payloads/` |
+| Serviços CR intactos | `api` / `web` / `landing` / `postgres` / `redis` — health 200 após deploy |
 
 ### Fase 1 — Infra + conectar instância (QR)
 **Meta:** criar canal Evolution e conectar um número; ainda sem mensageria de produção.
@@ -378,7 +392,7 @@ Operador/IA → pipeline outbound → `registry.getOutbound(WHATSAPP_EVOLUTION).
 
 | Story | Fase | Resumo | Critérios de aceite |
 |-------|------|--------|---------------------|
-| **S0 — PoC Evolution + payloads** | 0 | Subir Evolution API (+ Manager v2 opcional) no EasyPanel com Postgres/Redis dedicados; documentar payloads reais (**1:1 e grupo**) | Instância conecta via QR; JSONs DM + `@g.us` anexados; auth do webhook confirmada; decisão v2/Baileys registrada |
+| **S0 — PoC Evolution + payloads** | 0 | Subir Evolution API (+ Manager v2 opcional) no EasyPanel com Postgres/Redis dedicados; documentar payloads reais (**1:1 e grupo**) | **Parcial (2026-07-20):** infra + URL + QR API + auth webhook (body) ✅; scan celular + fixtures DM/`@g.us` ⏳ — ver `EVOLUTION-OPS-S0.md` |
 | **S1 — Enum + EvolutionHttpClient + provisionamento** | 1 | `WHATSAPP_EVOLUTION` no enum; client REST; create/connect/state/logout/delete; wire em `channelsService.create/remove` | Criar canal provisiona instância e salva `apikey`; deletar canal remove instância; migration aplica sem downtime |
 | **S2 — QR + estado no painel** | 1 | Endpoints `qrcode`/`connection-state`/`logout`; inbound parcial (`CONNECTION_UPDATE`/`QRCODE_UPDATED`); UI de QR e badge | Operador escaneia e vê "Conectado" em tempo real; estado persiste em `config`; `testConnection` cobre Evolution |
 | **S3 — Inbound + outbound texto 1:1** | 2 | Mapper inbound; `EvolutionInboundAdapter` completo; `EvolutionOutboundAdapter` texto; registro no módulo — **só DMs primeiro** | Texto 1:1 ponta a ponta; echo não duplica; unit tests do mapper (payloads da S0) verdes |

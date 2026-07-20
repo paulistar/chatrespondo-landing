@@ -1,0 +1,32 @@
+{
+  "meta": {
+    "source": "evolution-api v2.3.7 PoC",
+    "capturedAt": "2026-07-20 14:13:30",
+    "instance": "cr_poc_s0",
+    "note": "base64/QR image data omitted from fixture"
+  },
+  "headers": {
+    "user-agent": [
+      "axios/1.13.2"
+    ],
+    "content-type": [
+      "application/json"
+    ]
+  },
+  "payload": {
+    "event": "qrcode.updated",
+    "instance": "cr_poc_s0",
+    "data": {
+      "qrcode": {
+        "instance": "cr_poc_s0",
+        "pairingCode": null,
+        "code": "2@Uc4B9upNiFQ3QYQ+siAqKNa3AGy78LImG5giK0…",
+        "base64": "<omitted base64 len=13266>"
+      }
+    },
+    "destination": "https://webhook.site/<token>",
+    "date_time": "2026-07-20T11:13:30.440Z",
+    "server_url": "https://evolution.chatrespondo.com",
+    "apikey": "<instance-apikey>"
+  }
+}
