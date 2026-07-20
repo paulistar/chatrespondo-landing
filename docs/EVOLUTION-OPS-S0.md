@@ -265,3 +265,19 @@ Código S2 entregue (API + painel):
 1. Painel → Novo canal → WhatsApp (Evolution) → nome → Criar e conectar
 2. Escanear QR no celular (Aparelhos conectados)
 3. Badge deve ir para **Conectado** (polling 3s + webhook)
+
+## S6 — Hardening (2026-07-20)
+
+Código de produção (API):
+
+| Item | Comportamento |
+|------|----------------|
+| Retry REST | 3 tentativas, backoff exponencial + jitter em 408/429/5xx/rede |
+| Idempotência webhook | `jobId` estável `inbound:{channelId}:{externalId}` + `claimProcessing` + unique DB |
+| Orphan cleanup | Cron diário 04:30 UTC — deleta `cr_*` sem Channel ativo; **nunca** `cr_poc_s0` |
+| Monitor | Cron 15min — canais `open` no DB vs remoto; drift → close + alerta |
+| Alertas | Slack + Sentry + Notification SYSTEM em disconnect / UNROUTED (debounce) |
+| Health | `GET /ready` → `optional.evolution` soft (não derruba readiness) |
+| QR cooldown | 60s entre pedidos de QR no mesmo canal (HTTP 429) |
+
+Env relevantes (já existentes / opcionais): `EVOLUTION_API_URL`, `EVOLUTION_API_KEY`, `SLACK_WEBHOOK_URL`, `SENTRY_DSN`.

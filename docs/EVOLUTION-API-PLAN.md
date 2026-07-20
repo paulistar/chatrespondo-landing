@@ -375,13 +375,13 @@ Operador/IA → pipeline outbound → `registry.getOutbound(WHATSAPP_EVOLUTION).
 
 ### Fase 4 — Hardening
 **Meta:** confiabilidade em produção.
-- [ ] Retry/backoff nas chamadas REST à Evolution; timeouts sensatos; circuit-breaker leve.
-- [ ] Detecção de instância morta (cron) + reconexão/alerta; `CONNECTION_UPDATE close` → `Notification` + Slack.
-- [ ] Idempotência revisada (reentrega de webhook) — reusa `claimProcessing` + unique constraints.
-- [ ] Monitoramento: Sentry (erros do adapter), métricas de fila, alerta de webhook `UNROUTED`.
-- [ ] Limpeza de instâncias `close` órfãs (cron); guardrail anti-abuso opcional (§8).
-- [ ] (Opcional) `ChannelConnectionEvent` (§5.2) para auditoria de estabilidade.
-- **Aceite:** derrubar/reconectar número é observável e recuperável; sem instâncias órfãs; alertas disparando.
+- [x] Retry/backoff nas chamadas REST à Evolution; timeouts sensatos; circuit-breaker leve (retry 3x em 429/5xx/rede).
+- [x] Detecção de instância morta (cron 15min) + alerta; `CONNECTION_UPDATE close` → Notification + Slack + Sentry.
+- [x] Idempotência revisada (reentrega de webhook) — `jobId` estável na fila + `claimProcessing` + unique constraints.
+- [x] Monitoramento: Sentry (erros do adapter), readiness soft `optional.evolution`, alerta de webhook `UNROUTED` (debounce).
+- [x] Limpeza de instâncias `cr_*` órfãs (cron diário); **nunca** toca `cr_poc_s0`; cooldown QR 60s anti rate-limit.
+- [ ] (Opcional) `ChannelConnectionEvent` (§5.2) para auditoria de estabilidade — adiado.
+- **Aceite:** derrubar/reconectar número é observável e recuperável; sem instâncias órfãs; alertas disparando. ✅ código S6 (2026-07-20); validação humana pós-reconnect.
 
 ---
 
@@ -399,7 +399,23 @@ Operador/IA → pipeline outbound → `registry.getOutbound(WHATSAPP_EVOLUTION).
 | **S3 — Inbound + outbound texto 1:1** | 2 | Mapper inbound; `EvolutionInboundAdapter` completo; `EvolutionOutboundAdapter` texto; registro no módulo — **só DMs primeiro** | ✅ **DONE (2026-07-20)** api `ff11fa8`; grupos stub → S4; teste humano pós-reconnect |
 | **S4 — Grupos (inbound + outbound) + mídia/status/enrichment** | 2→3 | **Grupos no MVP (confirmado):** inbound `@g.us` + outbound texto/mídia para grupo; mídia (img/áudio/vídeo/doc/sticker/loc/reaction); `MESSAGES_UPDATE`→status; re-host UploadsService; enricher | ✅ **DONE (2026-07-20)** api `60dd23d`; fixtures sintéticas grupo+imagem; teste humano pós-reconnect |
 | **S5 — UI canal + history sync** | 3 | Card com reconectar/reescanear/logout; ícone; **import de histórico ao conectar (confirmado)** | ✅ **DONE (2026-07-20)** api `b74ddfb` · web `a966531` · landing docs `178278a` — `EvolutionSyncAdapter` (findChats/findMessages), auto-import em `CONNECTION_UPDATE open`, botão **Importar histórico**, lookback `EVOLUTION_HISTORY_LOOKBACK_DAYS` (default 30, max 90); deploy EasyPanel api+web confirmado (sync-adapter.js em `/app/dist`) |
-| **S6 — Hardening + monitoramento** | 4 | Retry/backoff; detecção de instância morta; alertas Sentry/Slack; limpeza de órfãs; (opcional) `ChannelConnectionEvent` — **depois** de 1:1 + grupos + mídia | Reconexão observável/recuperável; sem instâncias órfãs; alertas disparam em `close`/`UNROUTED` |
+| **S6 — Hardening + monitoramento** | 4 | Retry/backoff; detecção de instância morta; alertas Sentry/Slack; limpeza de órfãs; (opcional) `ChannelConnectionEvent` — **depois** de 1:1 + grupos + mídia | ✅ **DONE (2026-07-20)** api `7599e02` · landing docs — retry REST, orphan cron, monitor 15min, Slack/Sentry/Notification, readiness soft, QR cooldown 60s; `ChannelConnectionEvent` adiado; validação humana pós-reconnect |
+
+---
+
+## 10.1 Status MVP Evolution (S0–S6) — 2026-07-20
+
+| Story | Código | Deploy | Validação humana |
+|-------|--------|--------|------------------|
+| S0 PoC | Infra + fixtures | Evolution EasyPanel | Scan PoC / fixtures webhook DM+grupo pendentes |
+| S1 Enum + client | ✅ | api | — |
+| S2 QR + UI | ✅ | api + web | Scan QR em canal **novo** (não `cr_poc_s0`) |
+| S3 Texto 1:1 | ✅ | api | DM ponta a ponta pós-reconnect |
+| S4 Grupos + mídia | ✅ | api | Grupo + mídia + ticks |
+| S5 History sync | ✅ | api `b74ddfb` · web `a966531` | Import histórico no connect |
+| S6 Hardening | ✅ | api (este commit) | Alertas Slack; orphan dry-run; `/ready` evolution |
+
+**MVP código completo.** Pendências humanas: conectar número real (fora PoC rate-limited), validar DM/grupo/mídia/histórico/alertas.
 
 > Estrutura de projeto (SCRUM é team-managed/next-gen): stories linkadas ao Epic via campo **parent**. Subtasks técnicas (migration, testes, UI) podem ser criadas dentro de cada story na execução.
 
