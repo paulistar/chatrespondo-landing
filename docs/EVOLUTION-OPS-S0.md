@@ -39,8 +39,10 @@ Ao atualizar env: **sempre merge** (nunca wipe). Copiar o bloco atual do painel,
 
 Já criada: **`cr_poc_s0`** (Baileys, `groupsIgnore=false`).
 
+- **Conexão S0 = SUCCESS** (2026-07-20): `GET /instance/connectionState/cr_poc_s0` → `state=open` após scan QR.
+- Perfil conectado: **Mart Studios** (owner JID mascarado nos fixtures).
 - `hash` retornado no create = **apikey da instância** (guardar no EasyPanel/ops, não no git).
-- Webhook PoC apontou para webhook.site (captura de payloads).
+- Webhook PoC: https://webhook.site/63f839ce-ad71-4c33-9a59-092dfdfbc0ab (captura de payloads).
 
 ### Criar outra instância
 
@@ -88,10 +90,32 @@ curl -sS -H "apikey: $EVO_GLOBAL_KEY" \
 
 1. No celular: WhatsApp → **Aparelhos conectados** → **Conectar um aparelho**.
 2. Escaneie o QR (`qrcode.base64` ou Manager).
-3. Confirme `connectionState` → `open`.
-4. Envie 1 DM e 1 mensagem de grupo para o número → salve fixtures em `evolution-payloads/` (ver README da pasta).
+3. Confirme `connectionState` → `open`. ✅ **feito**
+4. **Próximo (fixtures de mensagem):** ver seção abaixo.
 
-QR expira rápido (~30s–1min). Se falhar: chame `/instance/connect/{name}` de novo.
+QR expira rápido (~30s–1min). Se a sessão cair (`close`): chame `/instance/connect/{name}` de novo e reescaneie.
+
+### Capturar fixtures DM + grupo (próximo passo humano)
+
+Com a sessão **open**, faça isto de **outro celular** (ou outro WhatsApp):
+
+1. Envie **1 DM** para o número conectado na PoC.
+2. Em um **grupo** onde esse número é membro, envie **1 mensagem** (texto simples).
+3. Abra o catcher: https://webhook.site/63f839ce-ad71-4c33-9a59-092dfdfbc0ab  
+   Procure eventos `messages.upsert` (DM = `@s.whatsapp.net`; grupo = `@g.us`).
+4. Salve em `docs/evolution-payloads/`:
+   - `messages_upsert_dm.json`
+   - `messages_upsert_group.json`
+5. **Scrub** antes de commit: `apikey`, telefones, `base64` de mídia.
+
+Alternativa API (histórico já syncado; útil para smoke, **não** substitui webhook fixture):
+
+```bash
+curl -sS -X POST "$EVO_URL/chat/findMessages/cr_poc_s0" \
+  -H "apikey: $EVO_GLOBAL_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"where":{"key":{"fromMe":false}},"limit":5}' | jq '.messages.total'
+```
 
 ### Enviar texto de teste (após `open`)
 
@@ -116,5 +140,7 @@ A partir de v2.4.0 a Foundation exige ativação/licença — evitar `latest` at
 
 ## Pronto para S1?
 
-Infra + URL + QR API + fixtures parciais: **sim, com ressalva**.  
-Falta scan humano + fixtures `messages.upsert` (DM + grupo) antes de fechar o aceite formal da S0 — mas S1 (enum + HttpClient) já pode começar em paralelo.
+**Sim.** Infra + URL + QR + conexão `open` + fixtures `qrcode`/`connection.update` (`connecting`+`open`): ✅  
+
+Pendência só de aceite formal S0: fixtures `messages.upsert` (DM + grupo) via passo humano acima.  
+S1 (enum `WHATSAPP_EVOLUTION` + `EvolutionHttpClient` + QR endpoints) **já pode começar**.

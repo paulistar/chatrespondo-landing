@@ -318,14 +318,14 @@ Operador/IA → pipeline outbound → `registry.getOutbound(WHATSAPP_EVOLUTION).
 
 > Cada fase é mergeável e deployável sem quebrar produção. Novo `ChannelType` é aditivo; enquanto o adapter não estiver registrado, criar canal Evolution simplesmente não é oferecido no painel (feature-gated).
 
-### Fase 0 — Spike / PoC (sem código de produção) ← **em andamento (infra ✅)**
+### Fase 0 — Spike / PoC (sem código de produção) ← **conexão SUCCESS ✅**
 **Meta:** validar payloads reais e a decisão v2/Baileys antes de escrever adapter.
 - [x] Subir **Evolution API v2** (Docker/EasyPanel) com Postgres+Redis **dedicados** e **volume persistente**.
 - [ ] (Opcional) Subir **Evolution Manager v2** no mesmo EasyPanel só para ops do spike (auth protegida). — **adiado** (API primeiro).
-- [x] Criar 1 instância manual (`cr_poc_s0`), obter QR via API; **scan no celular + send/receive** pendente (ação humana).
-- [~] Capturar shapes: `QRCODE_UPDATED` + `CONNECTION_UPDATE` (connecting) ✅ em `docs/evolution-payloads/`; `MESSAGES_UPSERT` DM+grupo / `open` ⏳ após QR.
+- [x] Criar 1 instância manual (`cr_poc_s0`), obter QR via API; **scan no celular concluído** → `connectionState=open` (2026-07-20).
+- [~] Capturar shapes: `QRCODE_UPDATED` + `CONNECTION_UPDATE` (`connecting` + **`open`**) ✅ em `docs/evolution-payloads/`; `MESSAGES_UPSERT` DM+grupo ⏳ ação humana (enviar 1 DM + 1 msg em grupo).
 - [x] Confirmar auth do webhook: **`apikey` no body JSON** (não no header HTTP). Ver `EVOLUTION-OPS-S0.md`.
-- **Aceite:** parcial — infra + auth webhook + QR API ok; falta scan + fixtures DM/grupo para fechar S0 formal. **Nenhum merge no app.**
+- **Aceite:** conexão S0 = **SUCCESS**; falta só fixtures `messages.upsert` (DM + grupo) para fechar S0 formal. **S1 já pode começar.** Nenhum merge no app ainda.
 
 #### Resultados Fase 0 (2026-07-20)
 
@@ -337,8 +337,9 @@ Operador/IA → pipeline outbound → `registry.getOutbound(WHATSAPP_EVOLUTION).
 | URL pública | https://evolution.chatrespondo.com |
 | Volume | `evolution-instances` → `/evolution/instances` |
 | Instância PoC | `cr_poc_s0` (Baileys, grupos habilitados) |
+| Conexão S0 | **SUCCESS** — `state=open` (QR escaneado) |
 | Ops | `docs/EVOLUTION-OPS-S0.md` |
-| Fixtures | `docs/evolution-payloads/` |
+| Fixtures | `docs/evolution-payloads/` (`connection_update_open.json` ✅) |
 | Serviços CR intactos | `api` / `web` / `landing` / `postgres` / `redis` — health 200 após deploy |
 
 ### Fase 1 — Infra + conectar instância (QR)

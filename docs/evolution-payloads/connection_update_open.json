@@ -1,0 +1,33 @@
+{
+  "meta": {
+    "source": "evolution-api v2.3.7 PoC",
+    "capturedAt": "2026-07-20 14:21:35",
+    "instance": "cr_poc_s0",
+    "note": "connection.update state=open after QR scan; apikey/phone/profilePic scrubbed"
+  },
+  "headers": {
+    "user-agent": [
+      "axios/1.13.2"
+    ],
+    "content-type": [
+      "application/json"
+    ]
+  },
+  "payload": {
+    "event": "connection.update",
+    "instance": "cr_poc_s0",
+    "data": {
+      "instance": "cr_poc_s0",
+      "wuid": "5511XXXXXXXXX@s.whatsapp.net",
+      "profileName": "Mart Studios",
+      "profilePictureUrl": "https://pps.whatsapp.net/<profile-pic-omitted>",
+      "state": "open",
+      "statusReason": 200
+    },
+    "destination": "https://webhook.site/<token>",
+    "date_time": "2026-07-20T11:21:34.955Z",
+    "sender": "5511XXXXXXXXX@s.whatsapp.net",
+    "server_url": "https://evolution.chatrespondo.com",
+    "apikey": "<instance-apikey>"
+  }
+}
