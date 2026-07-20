@@ -39,10 +39,14 @@ Ao atualizar env: **sempre merge** (nunca wipe). Copiar o bloco atual do painel,
 
 Já criada: **`cr_poc_s0`** (Baileys, `groupsIgnore=false`).
 
-- **Conexão S0 = SUCCESS** (2026-07-20): `GET /instance/connectionState/cr_poc_s0` → `state=open` após scan QR.
+- **Conexão S0:** em 2026-07-20 chegou a `open` após scan; um logout indevido derrubou a sessão. Reconexão: QR renovado via `/instance/connect` (estado `connecting`) — **reescaneie** no celular. **Não** usar logout para regenerar QR.
 - Perfil conectado: **Mart Studios** (owner JID mascarado nos fixtures).
 - `hash` retornado no create = **apikey da instância** (guardar no EasyPanel/ops, não no git).
 - Webhook PoC: https://webhook.site/63f839ce-ad71-4c33-9a59-092dfdfbc0ab (captura de payloads).
+
+> **⚠️ NUNCA faça logout de uma PoC live só para regenerar QR.**  
+> Se `connectionState` = `open`, **não** chame `DELETE /instance/logout/{name}`. Logout derruba a sessão WhatsApp já pareada.  
+> Para renovar QR só quando o estado for `close` / `connecting` (sem sessão útil): use `GET /instance/connect/{name}`. Se já estiver `open`, reporte sucesso e não faça nada destrutivo.
 
 ### Criar outra instância
 
@@ -77,45 +81,73 @@ Resposta: `instance.status=connecting`, `hash` (apikey da instância), `qrcode.b
 
 ### Obter / renovar QR
 
-```bash
-curl -sS -H "apikey: $EVO_GLOBAL_KEY" \
-  "$EVO_URL/instance/connect/cr_poc_s0" | jq '{pairingCode, count, hasBase64: (.base64!=null)}'
+**Antes de qualquer connect/logout:** confira o estado. Se `open` → pare. Não regenerar QR nem logout.
 
-# estado
+```bash
+# 1) estado primeiro
 curl -sS -H "apikey: $EVO_GLOBAL_KEY" \
   "$EVO_URL/instance/connectionState/cr_poc_s0" | jq .
+
+# 2) só se NÃO for open — renovar QR
+curl -sS -H "apikey: $EVO_GLOBAL_KEY" \
+  "$EVO_URL/instance/connect/cr_poc_s0" | jq '{pairingCode, count, hasBase64: (.base64!=null), codePrefix: (.code|tostring[0:2])}'
 ```
+
+QR de pareamento WhatsApp válido começa com `2@`. **Não** use `DELETE /instance/logout/...` como atalho para “forçar” QR novo numa sessão `open`.
 
 ### Escanear no celular (ação humana)
 
 1. No celular: WhatsApp → **Aparelhos conectados** → **Conectar um aparelho**.
-2. Escaneie o QR (`qrcode.base64` ou Manager).
-3. Confirme `connectionState` → `open`. ✅ **feito**
+2. Escaneie o QR (`docs/evolution-payloads/cr_poc_s0-qr.png` ou `qrcode.base64` / Manager).
+3. Confirme `connectionState` → `open`.
 4. **Próximo (fixtures de mensagem):** ver seção abaixo.
 
 QR expira rápido (~30s–1min). Se a sessão cair (`close`): chame `/instance/connect/{name}` de novo e reescaneie.
 
-### Capturar fixtures DM + grupo (próximo passo humano)
+### Endpoints REST v2.3.7 (mensagens / chats) — confirmados
 
-Com a sessão **open**, faça isto de **outro celular** (ou outro WhatsApp):
+Base: `https://evolution.chatrespondo.com` · header `apikey: $EVO_GLOBAL_KEY`
 
-1. Envie **1 DM** para o número conectado na PoC.
-2. Em um **grupo** onde esse número é membro, envie **1 mensagem** (texto simples).
-3. Abra o catcher: https://webhook.site/63f839ce-ad71-4c33-9a59-092dfdfbc0ab  
-   Procure eventos `messages.upsert` (DM = `@s.whatsapp.net`; grupo = `@g.us`).
-4. Salve em `docs/evolution-payloads/`:
-   - `messages_upsert_dm.json`
-   - `messages_upsert_group.json`
-5. **Scrub** antes de commit: `apikey`, telefones, `base64` de mídia.
+| Método | Path | HTTP | Notas |
+|--------|------|------|-------|
+| `POST` | `/chat/findChats/{instance}` | **200** | body `{}` ok; lista chats (`@s.whatsapp.net`, `@g.us`, `@lid`) |
+| `POST` | `/chat/findMessages/{instance}` | **200** | body `{"where":{"key":{...}},"limit":N}`; paginação em `messages.{total,pages,currentPage,records}` |
+| `POST` | `/chat/findStatusMessage/{instance}` | **200** | status broadcasts |
+| `GET` | `/chat/findMessages/{instance}` | **404** | GET não existe |
+| `GET` | `/chat/findChats/{instance}` | **404** | GET não existe |
+| `POST`/`GET` | `/message/findMessages/{instance}` | **404** | path errado |
 
-Alternativa API (histórico já syncado; útil para smoke, **não** substitui webhook fixture):
+Exemplo (DM inbound):
 
 ```bash
 curl -sS -X POST "$EVO_URL/chat/findMessages/cr_poc_s0" \
   -H "apikey: $EVO_GLOBAL_KEY" \
   -H 'Content-Type: application/json' \
-  -d '{"where":{"key":{"fromMe":false}},"limit":5}' | jq '.messages.total'
+  -d '{"where":{"key":{"remoteJid":"5511XXXXXXXXX@s.whatsapp.net","fromMe":false}},"limit":5}' \
+  | jq '{total: .messages.total, n: (.messages.records|length), sample: .messages.records[0].key}'
 ```
+
+PoC: `findMessages` com `fromMe:false` → `messages.total≈2031` após sync.
+
+### Fixtures de mensagem (REST vs webhook)
+
+Já salvos (scrubbed) a partir do histórico:
+
+- `docs/evolution-payloads/messages_find_dm.json`
+- `docs/evolution-payloads/messages_find_group.json` (`@g.us`)
+
+**Não** são shape de webhook (`event`/`apikey`/`data`). O catcher webhook.site ainda **não** recebeu `messages.upsert`.
+
+### Capturar fixtures webhook DM + grupo (passo humano restante)
+
+Com a sessão **open**, de **outro celular**:
+
+1. Envie **1 DM** para o número conectado na PoC.
+2. Em um **grupo** onde esse número é membro, envie **1 mensagem** (texto simples).
+3. Catcher: https://webhook.site/63f839ce-ad71-4c33-9a59-092dfdfbc0ab — eventos `messages.upsert`.
+4. Salve scrubbed:
+   - `messages_upsert_dm.json`
+   - `messages_upsert_group.json`
 
 ### Enviar texto de teste (após `open`)
 
@@ -140,7 +172,7 @@ A partir de v2.4.0 a Foundation exige ativação/licença — evitar `latest` at
 
 ## Pronto para S1?
 
-**Sim.** Infra + URL + QR + conexão `open` + fixtures `qrcode`/`connection.update` (`connecting`+`open`): ✅  
+**Sim.** Infra + URL + QR + conexão `open` + fixtures `qrcode`/`connection.update` + samples REST `findMessages` (DM+grupo): ✅  
 
-Pendência só de aceite formal S0: fixtures `messages.upsert` (DM + grupo) via passo humano acima.  
+Pendência formal S0 (webhook): `messages.upsert` DM + grupo no catcher (1 envio cada). Não bloqueia início de S1 — mapper pode usar `messages_find_*` para campos `key`/`message`; validação do envelope webhook fica quando houver upsert ao vivo.  
 S1 (enum `WHATSAPP_EVOLUTION` + `EvolutionHttpClient` + QR endpoints) **já pode começar**.

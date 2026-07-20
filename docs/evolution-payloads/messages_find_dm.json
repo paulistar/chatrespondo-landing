@@ -1,0 +1,72 @@
+{
+  "meta": {
+    "source": "evolution-api v2.3.7 REST findMessages (NOT webhook)",
+    "capturedAt": "2026-07-20T14:26:12Z",
+    "instance": "cr_poc_s0",
+    "endpoint": "POST /chat/findMessages/{instance}",
+    "requestBody": {
+      "where": {
+        "key": {
+          "remoteJid": "5511XXXXXXXXX@s.whatsapp.net",
+          "fromMe": false
+        }
+      },
+      "limit": 10
+    },
+    "note": "Shape differs from webhook messages.upsert: REST returns DB records under messages.records[]; webhook wraps event/instance/apikey/data. Live webhook.upsert still needs 1 DM + 1 group send to webhook.site.",
+    "scrubbed": true
+  },
+  "apiResponseSample": {
+    "messages": {
+      "total": "<n>",
+      "pages": "<n>",
+      "currentPage": 1,
+      "records": [
+        {
+          "id": "<db-id>",
+          "key": {
+            "id": "3A525F8114897DFE74D6",
+            "fromMe": false,
+            "remoteJid": "5511XXXXXXXXX@s.whatsapp.net"
+          },
+          "pushName": "<pushName-omitted>",
+          "messageType": "conversation",
+          "message": {
+            "conversation": "Bom dia! Tudo bem e com você? \n\nMuito obrigada",
+            "messageContextInfo": {
+              "threadId": [],
+              "messageSecret": "<redacted>"
+            }
+          },
+          "messageTimestamp": 1762351229,
+          "instanceId": "<instance-uuid>",
+          "source": "ios",
+          "contextInfo": null,
+          "MessageUpdate": []
+        }
+      ]
+    }
+  },
+  "record": {
+    "id": "<db-id>",
+    "key": {
+      "id": "3A525F8114897DFE74D6",
+      "fromMe": false,
+      "remoteJid": "5511XXXXXXXXX@s.whatsapp.net"
+    },
+    "pushName": "<pushName-omitted>",
+    "messageType": "conversation",
+    "message": {
+      "conversation": "Bom dia! Tudo bem e com você? \n\nMuito obrigada",
+      "messageContextInfo": {
+        "threadId": [],
+        "messageSecret": "<redacted>"
+      }
+    },
+    "messageTimestamp": 1762351229,
+    "instanceId": "<instance-uuid>",
+    "source": "ios",
+    "contextInfo": null,
+    "MessageUpdate": []
+  }
+}

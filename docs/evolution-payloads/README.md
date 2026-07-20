@@ -9,11 +9,23 @@ Payloads reais capturados da Evolution API **v2.3.7** no EasyPanel (`evolution.c
 | `qrcode.updated` | `qrcode_updated.json` | ✅ capturado (PoC) |
 | `connection.update` | `connection_update.json` | ✅ capturado (`state=connecting`) |
 | `connection.update` (`open`) | `connection_update_open.json` | ✅ capturado (QR escaneado; S0 connection SUCCESS) |
-| `messages.upsert` (DM) | — | ⏳ enviar 1 DM ao número conectado (outro celular) |
-| `messages.upsert` (grupo `@g.us`) | — | ⏳ 1 mensagem em grupo onde o número é membro |
-| `messages.update` / `send.message` | — | ⏳ após mensagens reais |
+| `messages.upsert` (DM) | — | ⏳ ainda **não** no webhook.site — enviar 1 DM ao número conectado |
+| `messages.upsert` (grupo `@g.us`) | — | ⏳ ainda **não** no webhook.site — 1 msg em grupo |
+| REST `findMessages` (DM) | `messages_find_dm.json` | ✅ scrubbed (histórico sync; **não** é shape de webhook) |
+| REST `findMessages` (grupo `@g.us`) | `messages_find_group.json` | ✅ scrubbed (histórico sync; **não** é shape de webhook) |
+| `messages.update` / `send.message` | — | ⏳ após mensagens reais via webhook |
 
 Catcher PoC: https://webhook.site/63f839ce-ad71-4c33-9a59-092dfdfbc0ab
+
+### Diferença de shape: webhook vs `findMessages`
+
+| | Webhook `messages.upsert` | REST `POST /chat/findMessages/{instance}` |
+|--|---------------------------|-------------------------------------------|
+| Envelope | `event` + `instance` + `apikey` + `data` | `{ messages: { total, pages, currentPage, records[] } }` |
+| Auth no body | `apikey` da instância | — (auth só no header `apikey`) |
+| Uso no adapter | **canônico** para inbound | útil para smoke/mapper de campos `key`/`message`/`messageType` |
+
+Fixtures `messages_find_*.json` **não substituem** `messages_upsert_*.json`.
 
 ## Achado crítico: autenticação do webhook
 
@@ -34,15 +46,16 @@ No adapter (S1+): validar `payload.apikey` com `crypto.timingSafeEqual` (além d
 
 ## Como capturar o restante (ops)
 
-Conexão já está **`open`**. Falta só mensagens:
+Fixtures REST de mensagem já existem (`messages_find_*`). Falta o envelope **webhook** `messages.upsert`:
 
-1. Abrir o catcher: https://webhook.site/63f839ce-ad71-4c33-9a59-092dfdfbc0ab
-2. De **outro celular**, enviar **1 DM** ao número conectado na PoC.
-3. Em um **grupo** onde esse número é membro, enviar **1 mensagem** de texto.
-4. Baixar do catcher os `messages.upsert` e salvar aqui como:
+1. Confirmar `GET /instance/connectionState/cr_poc_s0` → `state=open` (se `connecting`/`close`, reescanear QR).
+2. Abrir o catcher: https://webhook.site/63f839ce-ad71-4c33-9a59-092dfdfbc0ab
+3. De **outro celular**, enviar **1 DM** ao número conectado na PoC.
+4. Em um **grupo** onde esse número é membro, enviar **1 mensagem** de texto.
+5. Baixar do catcher os `messages.upsert` e salvar aqui como:
    - `messages_upsert_dm.json`
    - `messages_upsert_group.json`
-5. **Scrub** antes de commit: apagar `apikey` real, `base64` de mídia, telefones reais se necessário.
+6. **Scrub** antes de commit: apagar `apikey` real, `base64` de mídia, telefones reais se necessário.
 
 ## Convenção
 
