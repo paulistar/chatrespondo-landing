@@ -16,10 +16,10 @@
 
 | # | Tema | Decisão |
 |---|------|---------|
-| 1 | Baileys vs Cloud API | **Evolution com motor Baileys** como canal **aditivo**. Não migrar nem alterar Zappfy/`WHATSAPP_OFFICIAL`. Cloud API oficial continua no canal já existente. |
+| 1 | Baileys vs Cloud API | **Evolution com motor Baileys** como canal **aditivo**. Usuário confirmou entendimento (Baileys ≠ Cloud API oficial). Não migrar nem alterar Zappfy/`WHATSAPP_OFFICIAL`. Cloud API oficial continua no canal já existente. |
 | 2 | 1 número = 1 instance | **Sim.** Cada `Channel` tipo `WHATSAPP_EVOLUTION` = 1 instance Evolution = 1 número. Org pode ter **N** canais (Zappfy + Evolution + …) até `maxChannels` do plano. Novo canal = novo número. |
 | 3 | Zappfy lado a lado | **Confirmado.** Evolution e Zappfy são canais independentes na mesma org. |
-| 4 | Grupos WhatsApp | Explicação na §15 (FAQ). **Default MVP:** só conversas **1:1** primeiro; suporte a grupos **adiado para S4+**. Confirmação do usuário ainda pendente após clarificação. |
+| 4 | Grupos WhatsApp | ✅ **MVP = sim** (usuário: “Sim”). Ordem: **1:1 primeiro (S3)**, depois **grupos inbound + outbound na mesma onda MVP (S4)**, **antes** do hardening (S6). Não adiar para pós-MVP. |
 | 5 | Hosting | **Mesmo Contabo / EasyPanel** (serviço dedicado Evolution). |
 | 6 | Importar histórico ao conectar | **Sim** — Phase 3 / S5 (deixa de ser só “opcional”). |
 | 7 | Postgres/Redis da Evolution | **Dedicados** (não compartilhar com ChatRespondo). |
@@ -323,9 +323,9 @@ Operador/IA → pipeline outbound → `registry.getOutbound(WHATSAPP_EVOLUTION).
 - [ ] Subir **Evolution API v2** (Docker/EasyPanel) com Postgres+Redis **dedicados** e **volume persistente**.
 - [ ] (Opcional) Subir **Evolution Manager v2** no mesmo EasyPanel só para ops do spike (auth protegida).
 - [ ] Criar 1 instância manual, conectar QR, enviar/receber texto e mídia via `curl`.
-- [ ] Capturar e documentar shapes de: `MESSAGES_UPSERT`, `MESSAGES_UPDATE`, `SEND_MESSAGE`, `CONNECTION_UPDATE`, `QRCODE_UPDATED` (JSONs reais anexados ao doc/ticket).
+- [ ] Capturar e documentar shapes de: `MESSAGES_UPSERT`, `MESSAGES_UPDATE`, `SEND_MESSAGE`, `CONNECTION_UPDATE`, `QRCODE_UPDATED` (JSONs reais anexados ao doc/ticket) — **incluir 1:1 e grupo (`@g.us`)** (grupos no MVP).
 - [ ] Confirmar como a Evolution autentica o webhook (header `apikey`?) e o formato do `key.id`/JID.
-- **Aceite:** doc com payloads confirmados + decisão registrada (v2 Baileys). **Nenhum merge no app.**
+- **Aceite:** doc com payloads confirmados (DM + grupo) + decisão registrada (v2 Baileys). **Nenhum merge no app.**
 
 ### Fase 1 — Infra + conectar instância (QR)
 **Meta:** criar canal Evolution e conectar um número; ainda sem mensageria de produção.
@@ -338,23 +338,24 @@ Operador/IA → pipeline outbound → `registry.getOutbound(WHATSAPP_EVOLUTION).
 - [ ] `channelsService.remove()`: deletar instância na Evolution (fire-and-forget).
 - **Aceite:** operador cria canal Evolution, escaneia QR, vê "Conectado"; deletar canal remove a instância. Mensageria ainda não fluindo (ou só auditada).
 
-### Fase 2 — Inbound + outbound (texto)
-**Meta:** conversa de texto ponta a ponta.
+### Fase 2 — Inbound + outbound texto **1:1** (+ grupos na sequência MVP)
+**Meta:** conversa de texto ponta a ponta — **primeiro 1:1**, depois grupos na mesma onda MVP (antes do hardening).
 - [ ] `EvolutionMessageMapper.normalizeInbound()` (TDD com payloads da Fase 0) → `NormalizedInboundMessage` (JID→phone, `fromMe`→echo, `isGroup`, reply/context).
 - [ ] `EvolutionInboundAdapter`: `extractLocators` (por `instance`+apikey), `matchesChannel`, `validateWebhook` (timingSafeEqual), `parseWebhook` (`MESSAGES_UPSERT`).
 - [ ] `EvolutionOutboundAdapter` + `denormalize()` para `TEXT` → `POST /message/sendText/{instance}`; `getRateLimits()`; `sendTypingIndicator()` (presence).
 - [ ] Registrar inbound+outbound no `ChannelHubModule.onModuleInit`.
-- **Aceite:** cliente manda texto → aparece no inbox → operador/IA responde → chega no WhatsApp; status ao menos `SENT`. Idempotência/echo sem duplicar.
+- [ ] **1:1 primeiro (S3):** texto DM ponta a ponta; echo/idempotência.
+- [ ] **Grupos em seguida (S4, ainda MVP):** inbound de `@g.us` (thread/grupo no inbox) + outbound texto para grupo; mapear JID de grupo e participantes mínimos necessários.
+- **Aceite:** (a) DM texto ponta a ponta com status ≥ `SENT` e sem duplicar echo; (b) mensagem de grupo chega no painel e resposta do painel chega no grupo.
 
-### Fase 3 — Mídia, status, presença e UI
-**Meta:** paridade funcional com o canal Zappfy.
-- [ ] `denormalize()` para IMAGE/AUDIO(ptt)/VIDEO/DOCUMENT/STICKER/LOCATION/REACTION.
+### Fase 3 — Mídia, status, presença, UI e history sync
+**Meta:** paridade funcional com o canal Zappfy (inclui grupos já entregues na Fase 2 / S4).
+- [ ] `denormalize()` para IMAGE/AUDIO(ptt)/VIDEO/DOCUMENT/STICKER/LOCATION/REACTION (1:1 e grupo).
 - [ ] `resolveInboundMediaUrl()` / `downloadMedia()` (re-hospedar no MinIO; tratar mídia cifrada Baileys).
 - [ ] `normalizeStatus()` para `MESSAGES_UPDATE` (ack numérico → sent/delivered/read/failed).
 - [ ] `EvolutionContactEnricher` (nome/foto de perfil, lazy — análogo ao Zappfy).
 - [ ] `EvolutionSyncAdapter` (`HistorySyncPort`) — **confirmado (2026-07-20):** importar histórico ao conectar.
 - [ ] UI: card do canal com estado de conexão, reconectar/reescanear, logout; ícone Evolution.
-- [ ] Grupos: **fora do MVP** (default); se usuário confirmar, inbound de grupo entra em S4+ (ver §0 / §15).
 - **Aceite:** envio/recebimento de todos os tipos de mídia; ticks de status corretos; foto/nome do contato; histórico importado ao conectar.
 
 ### Fase 4 — Hardening
@@ -377,13 +378,13 @@ Operador/IA → pipeline outbound → `registry.getOutbound(WHATSAPP_EVOLUTION).
 
 | Story | Fase | Resumo | Critérios de aceite |
 |-------|------|--------|---------------------|
-| **S0 — PoC Evolution + payloads** | 0 | Subir Evolution API (+ Manager v2 opcional) no EasyPanel com Postgres/Redis dedicados; documentar payloads reais | Instância conecta via QR; JSONs anexados; auth do webhook confirmada; decisão v2/Baileys registrada |
+| **S0 — PoC Evolution + payloads** | 0 | Subir Evolution API (+ Manager v2 opcional) no EasyPanel com Postgres/Redis dedicados; documentar payloads reais (**1:1 e grupo**) | Instância conecta via QR; JSONs DM + `@g.us` anexados; auth do webhook confirmada; decisão v2/Baileys registrada |
 | **S1 — Enum + EvolutionHttpClient + provisionamento** | 1 | `WHATSAPP_EVOLUTION` no enum; client REST; create/connect/state/logout/delete; wire em `channelsService.create/remove` | Criar canal provisiona instância e salva `apikey`; deletar canal remove instância; migration aplica sem downtime |
 | **S2 — QR + estado no painel** | 1 | Endpoints `qrcode`/`connection-state`/`logout`; inbound parcial (`CONNECTION_UPDATE`/`QRCODE_UPDATED`); UI de QR e badge | Operador escaneia e vê "Conectado" em tempo real; estado persiste em `config`; `testConnection` cobre Evolution |
-| **S3 — Inbound + outbound texto** | 2 | Mapper inbound; `EvolutionInboundAdapter` completo; `EvolutionOutboundAdapter` texto; registro no módulo | Texto ponta a ponta; echo não duplica; unit tests do mapper (payloads da S0) verdes |
-| **S4 — Mídia + status + enrichment** | 3 | Mídia (img/áudio/vídeo/doc/sticker/loc/reaction); `MESSAGES_UPDATE`→status; MinIO; enricher de contato | Todos os tipos enviam/recebem; ticks corretos; foto/nome do contato |
+| **S3 — Inbound + outbound texto 1:1** | 2 | Mapper inbound; `EvolutionInboundAdapter` completo; `EvolutionOutboundAdapter` texto; registro no módulo — **só DMs primeiro** | Texto 1:1 ponta a ponta; echo não duplica; unit tests do mapper (payloads da S0) verdes |
+| **S4 — Grupos (inbound + outbound) + mídia/status/enrichment** | 2→3 | **Grupos no MVP (confirmado):** inbound `@g.us` + outbound texto para grupo; em seguida mídia (img/áudio/vídeo/doc/sticker/loc/reaction); `MESSAGES_UPDATE`→status; MinIO; enricher | Grupo recebe/envia texto no painel; todos os tipos de mídia; ticks corretos; foto/nome do contato |
 | **S5 — UI canal + history sync** | 3 | Card com reconectar/reescanear/logout; ícone; **import de histórico ao conectar (confirmado)** | Reconexão via painel funciona; histórico importado após connect |
-| **S6 — Hardening + monitoramento** | 4 | Retry/backoff; detecção de instância morta; alertas Sentry/Slack; limpeza de órfãs; (opcional) `ChannelConnectionEvent` | Reconexão observável/recuperável; sem instâncias órfãs; alertas disparam em `close`/`UNROUTED` |
+| **S6 — Hardening + monitoramento** | 4 | Retry/backoff; detecção de instância morta; alertas Sentry/Slack; limpeza de órfãs; (opcional) `ChannelConnectionEvent` — **depois** de 1:1 + grupos + mídia | Reconexão observável/recuperável; sem instâncias órfãs; alertas disparam em `close`/`UNROUTED` |
 
 > Estrutura de projeto (SCRUM é team-managed/next-gen): stories linkadas ao Epic via campo **parent**. Subtasks técnicas (migration, testes, UI) podem ser criadas dentro de cada story na execução.
 
@@ -409,10 +410,10 @@ Operador/IA → pipeline outbound → `registry.getOutbound(WHATSAPP_EVOLUTION).
 
 | # | Pergunta | Status |
 |---|----------|--------|
-| 1 | Evolution v2 (Baileys) vs Cloud API | ✅ **Travado:** Baileys aditivo (ver §0 / §15) |
+| 1 | Evolution v2 (Baileys) vs Cloud API | ✅ **Travado:** Baileys aditivo; usuário confirmou entendimento (ver §0 / §15) |
 | 2 | 1 instância por canal/número | ✅ **Travado:** sim; N canais = N números até `maxChannels` |
 | 3 | Lado a lado com Zappfy | ✅ **Travado:** sim, canais independentes |
-| 4 | Grupos no dia 1 | ⏳ **Pendente clarificação do usuário** — default: **1:1 primeiro**, grupos em S4+ |
+| 4 | Grupos no MVP | ✅ **Travado:** **sim** — 1:1 em S3, grupos inbound+outbound em S4 (mesma onda MVP), antes de S6 |
 | 5 | Onde hospedar | ✅ **Travado:** mesmo Contabo/EasyPanel |
 | 6 | Importar histórico ao conectar | ✅ **Travado:** sim (Fase 3 / S5) |
 | 7 | Postgres/Redis dedicados | ✅ **Travado:** sim |
@@ -426,12 +427,12 @@ Operador/IA → pipeline outbound → `registry.getOutbound(WHATSAPP_EVOLUTION).
 |------|--------|--------------------|
 | 0 | Spike/PoC + payloads | 2–3 dias |
 | 1 | Infra + conectar (QR) | 4–5 dias |
-| 2 | Inbound/outbound texto | 3–4 dias |
+| 2 | Inbound/outbound texto **1:1** + **grupos** (MVP) | 4–6 dias |
 | 3 | Mídia, status, UI, history sync | 4–5 dias |
 | 4 | Hardening + monitoramento | 3–4 dias |
-| — | **Total** | **~3,5–4 semanas** (16–21 dias úteis) |
+| — | **Total** | **~4–4,5 semanas** (17–23 dias úteis) |
 
-> Reduzível para ~2,5 semanas se grupos forem adiados (default) e o blueprint Zappfy for reaproveitado agressivamente. History sync está **confirmado** na Fase 3.
+> Grupos estão **no MVP** (S3 1:1 → S4 grupos → S5 mídia/UI/histórico → S6 hardening). Blueprint Zappfy reduz esforço; history sync **confirmado** na Fase 3.
 
 ---
 
@@ -461,7 +462,7 @@ Operador/IA → pipeline outbound → `registry.getOutbound(WHATSAPP_EVOLUTION).
 - **Inbound** = receber mensagens que chegam de grupos e mostrar no painel.
 - **Outbound** = responder ou iniciar mensagens **para** um grupo pelo painel.
 
-**Recomendação atual:** no MVP, focar em conversas **diretas (1:1)**. Grupos ficam para depois (S4+), a menos que o produto confirme que precisa no dia 1.
+**Decisão travada (2026-07-20):** grupos **entram no MVP**. Ordem: entregar **1:1 primeiro (S3)**, depois **grupos inbound + outbound (S4)** na mesma onda, **antes** do hardening (S6).
 
 ### Posso ter vários números na mesma empresa?
 
