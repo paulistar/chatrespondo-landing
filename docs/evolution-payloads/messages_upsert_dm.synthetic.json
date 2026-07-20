@@ -1,0 +1,41 @@
+{
+  "meta": {
+    "source": "synthetic — Evolution API v2.3.7 webhook shape (docs + findMessages record)",
+    "capturedAt": "2026-07-20T15:30:00Z",
+    "instance": "cr_example",
+    "note": "Live webhook.upsert DM ainda não capturado no webhook.site; shape alinhado à doc oficial + fields do messages_find_dm.json. Scrubbed.",
+    "scrubbed": true
+  },
+  "headers": {
+    "content-type": ["application/json"],
+    "user-agent": ["axios/1.13.2"]
+  },
+  "payload": {
+    "event": "messages.upsert",
+    "instance": "cr_example",
+    "data": {
+      "key": {
+        "id": "3A525F8114897DFE74D6",
+        "fromMe": false,
+        "remoteJid": "5511XXXXXXXXX@s.whatsapp.net"
+      },
+      "pushName": "Cliente Exemplo",
+      "message": {
+        "conversation": "Bom dia! Tudo bem e com você? \n\nMuito obrigada",
+        "messageContextInfo": {
+          "threadId": [],
+          "messageSecret": "<redacted>"
+        }
+      },
+      "messageType": "conversation",
+      "messageTimestamp": 1762351229,
+      "instanceId": "<instance-uuid>",
+      "source": "ios"
+    },
+    "destination": "https://api.example.com/api/v1/webhooks/WHATSAPP_EVOLUTION",
+    "date_time": "2026-07-20T15:30:00.000Z",
+    "sender": "5511XXXXXXXXX@s.whatsapp.net",
+    "server_url": "https://evolution.example.com",
+    "apikey": "<instance-apikey>"
+  }
+}
