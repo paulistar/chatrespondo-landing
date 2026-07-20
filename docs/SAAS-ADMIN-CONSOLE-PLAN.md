@@ -326,7 +326,26 @@ model AdminAuditLog {
 
 1. **Impersonation:** "ver como" read-only é desejado? Restrição LGPD/contratual?
 2. **Financeiro P1:** invoices via proxy Stripe atende, ou persistir faturas localmente?
-3. **Cupons:** Stripe Dashboard (MVP) vs gestão in-app em P1?
+
+---
+
+## 10.1 Decisões 2026-07-20 marketing/planos (P1 + slice Marketing)
+
+| # | Tema | Decisão |
+|---|------|---------|
+| 8 | **Catálogo de planos** | Migrar `PLAN_CATALOG` hardcoded → tabela `billing_plans` (`BillingPlan`). Seed com Trial/Starter/Pro/Business/Enterprise/Custom. Runtime via `PlansCatalogService` (memória + Redis TTL 60s). Constantes `DEFAULT_PLAN_CATALOG` ficam só como fallback/seed. |
+| 9 | **Edição de planos** | Admin HQ em `/admin/plans`: nome, descrição, preço BRL, limites (`maxAgents/maxChannels/maxMembers`), `isActive`, Stripe Price ID (explícito; senão env `stripePriceEnvKey`). Checkout/billing leem do DB. |
+| 10 | **Ajuste de plano do cliente** | `POST /admin/orgs/:id/plan` (forçar plano + limits override + estender trial) e `POST /admin/orgs/:id/exempt` — ambos com `AdminAuditLog`. UI em `/admin/orgs/:id` com modais PT-BR. |
+| 11 | **Cupons** | Gestão in-app: cria Stripe Coupon + Promotion Code e espelha em `promo_coupons`. Desativar = `promotionCodes.update(active:false)`. |
+| 12 | **Promoções do site** | Modelo `SitePromotion` (CMS-lite). CRUD em `/admin/marketing`. Público: `GET /api/v1/public/marketing` (promoções ativas + gtmId). |
+| 13 | **GTM / PostHog** | GTM ID em `platform_settings` (`marketing.gtm_id`) editável no admin. PostHog: só status (configured/host) via env — **nunca** expor chave. Landing ainda pode usar `VITE_GTM_ID` no build; DB é fonte editável + endpoint público. |
+| 14 | **Menus HQ** | Dashboard, Clientes, **Planos**, **Marketing**, Configurações. |
+
+**URLs:**
+- `/admin/plans` — CRUD catálogo
+- `/admin/marketing` — Cupons / Promoções / Integrações
+- `/admin/orgs/:id` — ajustar plano + cortesia
+- `GET /api/v1/public/marketing` — consumo landing
 
 ---
 
